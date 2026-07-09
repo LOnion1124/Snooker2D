@@ -1,0 +1,33 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "mingw64-qt6",
+      "displayName": "MinGW64 Qt 6.11.1",
+      "description": "使用本地安装的 MinGW Qt 6.11.1 构建",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/mingw64-qt6",
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.11.1/mingw_64",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "C:/Qt/Tools/mingw1310_64/bin/gcc.exe",
+        "CMAKE_CXX_COMPILER": "C:/Qt/Tools/mingw1310_64/bin/g++.exe"
+      }
+    },
+    {
+      "name": "mingw64-qt6-release",
+      "displayName": "MinGW64 Qt 6.11.1 Release",
+      "description": "使用本地安装的 MinGW Qt 6.11.1 构建 (Release)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/mingw64-qt6-release",
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.11.1/mingw_64",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "C:/Qt/Tools/mingw1310_64/bin/gcc.exe",
+        "CMAKE_CXX_COMPILER": "C:/Qt/Tools/mingw1310_64/bin/g++.exe"
+      }
+    }
+  ]
+}

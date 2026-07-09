@@ -1,0 +1,10 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "snooker2d",
+  "version": "1.0.0",
+  "description": "A 2D Snooker game built with C++ and Qt 6",
+  "dependencies": [
+    "qtbase",
+    "qtmultimedia"
+  ]
+}

@@ -1,0 +1,9 @@
+CompileFlags:
+  CompilationDatabase: build/mingw64-qt6
+
+Diagnostics:
+  UnusedIncludes: Strict
+  MissingIncludes: Strict
+
+Index:
+  Background: Build
