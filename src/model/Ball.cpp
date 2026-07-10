@@ -31,9 +31,9 @@ void Ball::setVelocity(const Vector2D& vel) {
     m_velocity = vel;
 }
 
-void Ball::setPocketed(bool pocketed) {
-    m_pocketed = pocketed;
-    if (pocketed) {
+void Ball::setPocketed(bool isPocketed) {
+    m_pocketed = isPocketed;
+    if (isPocketed) {
         m_onTable = false;
         m_velocity = Vector2D(0.0, 0.0);
         emit pocketed();
