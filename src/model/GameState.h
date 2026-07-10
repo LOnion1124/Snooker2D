@@ -59,7 +59,7 @@ private:
 
     // 状态
     GamePhase m_phase = GamePhase::NotStarted;
-    Player m_currentPlayerId = Player::Player1;
+    PlayerId m_currentPlayerId = PlayerId::Player1;
     bool m_simulationRunning = false;
 
     // 击球跟踪

@@ -22,7 +22,7 @@ GameState::~GameState() = default;
 
 void GameState::startNewGame() {
     resetGame();
-    m_currentPlayerId = Player::Player1;
+    m_currentPlayerId = PlayerId::Player1;
     m_phase = GamePhase::RedBall;
     emit phaseChanged(m_phase);
     emit turnChanged(currentPlayer());
@@ -93,14 +93,14 @@ void GameState::updateSimulation() {
 }
 
 void GameState::switchTurn() {
-    m_currentPlayerId = (m_currentPlayerId == Player::Player1) ?
-                        Player::Player2 : Player::Player1;
+    m_currentPlayerId = (m_currentPlayerId == PlayerId::Player1) ?
+                        PlayerId::Player2 : PlayerId::Player1;
     currentPlayer()->resetBreak();
     emit turnChanged(currentPlayer());
 }
 
 Player* GameState::currentPlayer() const {
-    return m_currentPlayerId == Player::Player1 ? m_player1.get() : m_player2.get();
+    return m_currentPlayerId == PlayerId::Player1 ? m_player1.get() : m_player2.get();
 }
 
 void GameState::handlePostShot() {
