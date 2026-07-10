@@ -3,14 +3,14 @@
 
 #include <QMainWindow>
 
+namespace Snooker2D {
+
 // Forward declarations
 class GameViewModel;
 class GameView;
 class CueControl;
 class ScoreBoard;
 class GameInfoPanel;
-
-namespace Snooker2D {
 
 class MainWindow : public QMainWindow {
     Q_OBJECT

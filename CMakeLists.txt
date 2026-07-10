@@ -3,6 +3,7 @@ project(Snooker2D VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_AUTOMOC ON)
 
 # ============================================================================
 # Qt 6 依赖（通过 vcpkg 或系统安装）
