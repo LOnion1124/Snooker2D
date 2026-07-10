@@ -1,11 +1,43 @@
 #include "GameView.h"
 #include "../viewmodel/GameViewModel.h"
+#include "../common/Constants.h"
 
 #include <QPainter>
 #include <QPaintEvent>
 #include <QResizeEvent>
+#include <QVariantMap>
+
+#include <array>
 
 namespace Snooker2D {
+
+namespace {
+
+QPointF gameToPixel(const QRectF& tableRect, double gameX, double gameY, bool centeredCoordinates = false) {
+    const double scaleX = tableRect.width() / TABLE_WIDTH;
+    const double scaleY = tableRect.height() / TABLE_HEIGHT;
+    const double tableX = centeredCoordinates ? gameX + TABLE_WIDTH / 2.0 : gameX;
+    const double tableY = centeredCoordinates ? gameY + TABLE_HEIGHT / 2.0 : gameY;
+
+    return QPointF(tableRect.left() + tableX * scaleX,
+                   tableRect.top() + tableY * scaleY);
+}
+
+QColor ballColor(int ballType) {
+    switch (ballType) {
+        case 0: return QColor(255, 255, 255); // White
+        case 1: return QColor(220, 20, 60);   // Red
+        case 2: return QColor(255, 215, 0);   // Yellow
+        case 3: return QColor(0, 128, 0);     // Green
+        case 4: return QColor(139, 69, 19);   // Brown
+        case 5: return QColor(0, 0, 255);     // Blue
+        case 6: return QColor(255, 105, 180); // Pink
+        case 7: return QColor(30, 30, 30);    // Black
+        default: return QColor(180, 180, 180);
+    }
+}
+
+} // namespace
 
 GameView::GameView(QWidget* parent)
     : QWidget(parent)
@@ -22,6 +54,7 @@ void GameView::setViewModel(GameViewModel* viewModel) {
     if (m_viewModel) {
         connect(m_viewModel, &GameViewModel::ballPositionsChanged,
                 this, &GameView::refresh);
+        refresh();
     }
 }
 
@@ -86,13 +119,82 @@ void GameView::drawTable(QPainter& painter) {
 }
 
 void GameView::drawPockets(QPainter& painter) {
-    // TODO: 绘制 6 个袋口
-    (void)painter;
+    if (m_tableRect.isEmpty()) {
+        return;
+    }
+
+    const double scaleX = m_tableRect.width() / TABLE_WIDTH;
+    const double pocketRadius = POCKET_RADIUS * scaleX;
+    const std::array<QPointF, 6> pocketPositions = {
+        gameToPixel(m_tableRect, 0.0, 0.0),
+        gameToPixel(m_tableRect, TABLE_WIDTH, 0.0),
+        gameToPixel(m_tableRect, 0.0, TABLE_HEIGHT),
+        gameToPixel(m_tableRect, TABLE_WIDTH, TABLE_HEIGHT),
+        gameToPixel(m_tableRect, TABLE_WIDTH / 2.0, 0.0),
+        gameToPixel(m_tableRect, TABLE_WIDTH / 2.0, TABLE_HEIGHT)
+    };
+
+    painter.save();
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(QColor(0, 0, 0));
+
+    for (const QPointF& center : pocketPositions) {
+        painter.drawEllipse(center, pocketRadius, pocketRadius);
+    }
+
+    painter.restore();
 }
 
 void GameView::drawBalls(QPainter& painter) {
-    // TODO: 根据 m_cachedBallPositions 绘制所有球
-    (void)painter;
+    if (m_tableRect.isEmpty()) {
+        return;
+    }
+
+    bool centeredCoordinates = false;
+    for (const QVariant& item : m_cachedBallPositions) {
+        const QVariantMap ballData = item.toMap();
+        const double x = ballData.value("x").toDouble();
+        const double y = ballData.value("y").toDouble();
+        if (x < 0.0 || y < 0.0 || x > TABLE_WIDTH || y > TABLE_HEIGHT) {
+            centeredCoordinates = true;
+            break;
+        }
+    }
+
+    const double scaleX = m_tableRect.width() / TABLE_WIDTH;
+    const double ballRadius = BALL_RADIUS * scaleX;
+
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing, true);
+
+    for (const QVariant& item : m_cachedBallPositions) {
+        const QVariantMap ballData = item.toMap();
+        if (!ballData.value("onTable").toBool()) {
+            continue;
+        }
+
+        const double x = ballData.value("x").toDouble();
+        const double y = ballData.value("y").toDouble();
+        const int type = ballData.value("type").toInt();
+        const QPointF center = gameToPixel(m_tableRect, x, y, centeredCoordinates);
+        const QColor fillColor = ballColor(type);
+        const QColor penColor = type == 0 ? QColor(130, 130, 130)
+                                          : (type == 7 ? QColor(240, 240, 240)
+                                                       : fillColor.darker(140));
+
+        painter.setPen(QPen(penColor, 1.5));
+        painter.setBrush(fillColor);
+        painter.drawEllipse(center, ballRadius, ballRadius);
+
+        const QPointF highlightCenter(center.x() - ballRadius * 0.35,
+                                      center.y() - ballRadius * 0.35);
+        const double highlightRadius = ballRadius * 0.35;
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(QColor(255, 255, 255, 120));
+        painter.drawEllipse(highlightCenter, highlightRadius, highlightRadius);
+    }
+
+    painter.restore();
 }
 
 void GameView::drawAimingGuide(QPainter& painter) {
