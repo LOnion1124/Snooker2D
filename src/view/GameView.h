@@ -37,7 +37,6 @@ protected:
     void resizeEvent(QResizeEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
-    void mouseReleaseEvent(QMouseEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
 
 private:
@@ -61,11 +60,9 @@ private:
     double m_cachedCuePower = 50.0;
     QString m_cachedGamePhase;
     bool m_centeredCoordinates = false; // 坐标系检测（refresh 时统一算出）
-    bool m_isDragging = false;
     bool m_isShotAnimating = false;
     bool m_hideAimingTools = false;
     double m_shotAnimationGap = 0.0;
-    QPointF m_dragStartPos;
     QRectF m_tableRect; // 球桌绘制区域
 };
 

@@ -21,6 +21,7 @@ GameView::GameView(QWidget* parent)
     setMinimumSize(800, 400);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     setFocusPolicy(Qt::StrongFocus);
+    setMouseTracking(true);
 
     m_shotAnimationTimer = new QTimer(this);
     m_shotAnimationTimer->setInterval(16);
@@ -82,7 +83,6 @@ void GameView::playShotAnimation() {
         return;
     }
 
-    m_isDragging = false;
     m_isShotAnimating = true;
     m_hideAimingTools = false;
     m_shotAnimationGap = cueGap();
@@ -129,11 +129,9 @@ void GameView::resizeEvent(QResizeEvent* event) {
 }
 
 void GameView::mousePressEvent(QMouseEvent* event) {
-    if (!m_isShotAnimating && aimingToolsVisible()
-        && event->button() == Qt::LeftButton && m_tableRect.contains(event->position())) {
-        m_isDragging = true;
-        m_dragStartPos = event->position();
+    if (!m_isShotAnimating && aimingToolsVisible() && event->button() == Qt::LeftButton) {
         updateCueAngleFromMouse(event->position());
+        playShotAnimation();
         event->accept();
         return;
     }
@@ -142,23 +140,13 @@ void GameView::mousePressEvent(QMouseEvent* event) {
 }
 
 void GameView::mouseMoveEvent(QMouseEvent* event) {
-    if (m_isDragging && !m_isShotAnimating && aimingToolsVisible()) {
+    if (!m_isShotAnimating && aimingToolsVisible()) {
         updateCueAngleFromMouse(event->position());
         event->accept();
         return;
     }
 
     QWidget::mouseMoveEvent(event);
-}
-
-void GameView::mouseReleaseEvent(QMouseEvent* event) {
-    if (event->button() == Qt::LeftButton && m_isDragging) {
-        m_isDragging = false;
-        event->accept();
-        return;
-    }
-
-    QWidget::mouseReleaseEvent(event);
 }
 
 void GameView::wheelEvent(QWheelEvent* event) {

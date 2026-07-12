@@ -5,7 +5,6 @@
 
 class QSlider;
 class QLabel;
-class QPushButton;
 
 namespace Snooker2D {
 
@@ -20,11 +19,6 @@ public:
 
     void setViewModel(CueControlViewModel* viewModel);
 
-private slots:
-    void onAngleSliderChanged(int value);
-    void onPowerSliderChanged(int value);
-    void onShootClicked();
-
 private:
     void setupUI();
 
@@ -34,7 +28,6 @@ private:
     QSlider* m_powerSlider = nullptr;
     QLabel* m_angleLabel = nullptr;
     QLabel* m_powerLabel = nullptr;
-    QPushButton* m_shootButton = nullptr;
 };
 
 } // namespace Snooker2D

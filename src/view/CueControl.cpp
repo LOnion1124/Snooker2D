@@ -3,7 +3,6 @@
 
 #include <QSlider>
 #include <QLabel>
-#include <QPushButton>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 
@@ -43,6 +42,8 @@ void CueControl::setupUI() {
     m_angleSlider = new QSlider(Qt::Horizontal, this);
     m_angleSlider->setRange(0, 359);
     m_angleSlider->setValue(0);
+    m_angleSlider->setEnabled(false);
+    m_angleSlider->setFocusPolicy(Qt::NoFocus);
     angleLayout->addWidget(m_angleLabel);
     angleLayout->addWidget(m_angleSlider);
 
@@ -52,44 +53,13 @@ void CueControl::setupUI() {
     m_powerSlider = new QSlider(Qt::Horizontal, this);
     m_powerSlider->setRange(0, 100);
     m_powerSlider->setValue(50);
+    m_powerSlider->setEnabled(false);
+    m_powerSlider->setFocusPolicy(Qt::NoFocus);
     powerLayout->addWidget(m_powerLabel);
     powerLayout->addWidget(m_powerSlider);
 
-    // 击球按钮
-    m_shootButton = new QPushButton("击球", this);
-    m_shootButton->setMinimumSize(80, 50);
-
     layout->addLayout(angleLayout);
     layout->addLayout(powerLayout);
-    layout->addWidget(m_shootButton);
-
-    // 信号连接
-    connect(m_angleSlider, &QSlider::valueChanged,
-            this, &CueControl::onAngleSliderChanged);
-    connect(m_powerSlider, &QSlider::valueChanged,
-            this, &CueControl::onPowerSliderChanged);
-    connect(m_shootButton, &QPushButton::clicked,
-            this, &CueControl::onShootClicked);
-}
-
-void CueControl::onAngleSliderChanged(int value) {
-    m_angleLabel->setText(QString("角度: %1°").arg(value));
-    if (m_viewModel) {
-        m_viewModel->setAngle(static_cast<double>(value));
-    }
-}
-
-void CueControl::onPowerSliderChanged(int value) {
-    m_powerLabel->setText(QString("力度: %1%").arg(value));
-    if (m_viewModel) {
-        m_viewModel->setPower(static_cast<double>(value));
-    }
-}
-
-void CueControl::onShootClicked() {
-    if (m_viewModel) {
-        emit m_viewModel->shootRequested();
-    }
 }
 
 } // namespace Snooker2D
