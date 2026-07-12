@@ -59,63 +59,75 @@ void MainWindow::setupUI() {
     setCentralWidget(centralWidget);
 }
 
-void MainWindow::setupBindings() {
-    // --- CueControl → GameViewModel 桥接 ---
-    // TODO: to be refined — 后续可考虑将 CueControlViewModel 合并进 GameViewModel
-    connect(m_cueControlViewModel, &CueControlViewModel::shootRequested,
-            m_gameViewModel, &GameViewModel::shoot);
-    connect(m_cueControlViewModel, &CueControlViewModel::angleChanged,
-            m_gameViewModel, &GameViewModel::setAngle);
-    connect(m_cueControlViewModel, &CueControlViewModel::powerChanged,
-            m_gameViewModel, &GameViewModel::setPower);
+void MainWindow::initGame() {
+    // 创建 Model
+    m_gameState = new GameState(this);
 
-    // --- GameViewModel → GameInfoPanel ---
-    // TODO: to be refined — 当前直接用 lambda 转发，后续可改用 QBind 或统一属性层
-    connect(m_gameViewModel, &GameViewModel::currentPlayerChanged, this, [this]() {
+    // 创建 ViewModel 并绑定 Model
+    m_gameViewModel = new GameViewModel(this);
+    m_gameViewModel->setGameState(m_gameState);
+
+    m_cueViewModel = new CueControlViewModel(this);
+    m_scoreViewModel = new ScoreViewModel(this);
+
+    // ViewModel 注入 View
+    m_gameView->setViewModel(m_gameViewModel);
+    m_cueControl->setViewModel(m_cueViewModel);
+    m_scoreBoard->setViewModel(m_scoreViewModel);
+
+    // 开始游戏
+    m_gameState->startNewGame();
+}
+
+void MainWindow::setupBindings() {
+    // 击球请求：CueControlViewModel → GameViewModel
+    connect(m_cueViewModel, &CueControlViewModel::shootRequested,
+            this, [this]() {
+        m_gameViewModel->setAngle(m_cueViewModel->angle());
+        m_gameViewModel->setPower(m_cueViewModel->power());
+        m_gameViewModel->shoot();
+    });
+
+    // 当前玩家 → GameInfoPanel
+    connect(m_gameViewModel, &GameViewModel::currentPlayerChanged,
+            this, [this]() {
         m_gameInfoPanel->setCurrentPlayer(m_gameViewModel->currentPlayer());
     });
-    connect(m_gameViewModel, &GameViewModel::gamePhaseChanged, this, [this]() {
+
+    // 游戏阶段 → GameInfoPanel
+    connect(m_gameViewModel, &GameViewModel::gamePhaseChanged,
+            this, [this]() {
         m_gameInfoPanel->setPhase(m_gameViewModel->gamePhase());
     });
-    connect(m_gameViewModel, &GameViewModel::foulOccurred, this, [this](const QString& desc) {
-        m_gameInfoPanel->setMessage(desc);
-    });
 
-    // --- GameViewModel → ScoreViewModel 桥接 ---
-    // TODO: to be refined — 双 ViewModel 同步比较脆弱, 后续可考虑直接让 ScoreBoard 绑定 GameViewModel
-    connect(m_gameViewModel, &GameViewModel::player1ScoreChanged, this, [this]() {
+    // 分数同步：GameViewModel → ScoreViewModel
+    connect(m_gameViewModel, &GameViewModel::player1ScoreChanged,
+            this, [this]() {
         m_scoreViewModel->setPlayer1Score(m_gameViewModel->player1Score());
     });
-    connect(m_gameViewModel, &GameViewModel::player2ScoreChanged, this, [this]() {
+    connect(m_gameViewModel, &GameViewModel::player2ScoreChanged,
+            this, [this]() {
         m_scoreViewModel->setPlayer2Score(m_gameViewModel->player2Score());
     });
 
-    // --- 初始状态同步（绑定前信号已发射，补一次同步） ---
-    // TODO: to be refined — 后续可改用属性绑定的方式自动同步
+    // 犯规提示
+    connect(m_gameViewModel, &GameViewModel::foulOccurred,
+            this, [this](const QString& desc) {
+        m_scoreViewModel->setFoulMessage(desc);
+        m_gameInfoPanel->setMessage(desc);
+    });
+
+    // 比赛结束
+    connect(m_gameViewModel, &GameViewModel::gameOver,
+            this, [this](int winner) {
+        QString msg = QString("玩家 %1 获胜！").arg(winner);
+        m_scoreViewModel->setStatusMessage(msg);
+        m_gameInfoPanel->setMessage(msg);
+    });
+
+    // 同步初始状态
     m_gameInfoPanel->setCurrentPlayer(m_gameViewModel->currentPlayer());
     m_gameInfoPanel->setPhase(m_gameViewModel->gamePhase());
-    m_scoreViewModel->setPlayer1Score(m_gameViewModel->player1Score());
-    m_scoreViewModel->setPlayer2Score(m_gameViewModel->player2Score());
-}
-
-void MainWindow::initGame() {
-    // 创建核心对象
-    // TODO: to be refined — 后续应改用依赖注入或工厂模式统一管理生命周期
-    m_gameState = new GameState(this);
-    m_gameViewModel = new GameViewModel(this);
-    m_cueControlViewModel = new CueControlViewModel(this);
-    m_scoreViewModel = new ScoreViewModel(this);
-
-    // 注入 ViewModel → View
-    m_gameView->setViewModel(m_gameViewModel);
-    m_cueControl->setViewModel(m_cueControlViewModel);
-    m_scoreBoard->setViewModel(m_scoreViewModel);
-
-    // 连接 Model → ViewModel
-    m_gameViewModel->setGameState(m_gameState);
-
-    // 开局
-    m_gameState->startNewGame();
 }
 
 } // namespace Snooker2D

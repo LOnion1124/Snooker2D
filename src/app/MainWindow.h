@@ -32,7 +32,7 @@ private:
 
     // ViewModel
     GameViewModel* m_gameViewModel = nullptr;
-    CueControlViewModel* m_cueControlViewModel = nullptr;
+    CueControlViewModel* m_cueViewModel = nullptr;
     ScoreViewModel* m_scoreViewModel = nullptr;
 
     // View
