@@ -31,6 +31,11 @@ void GameState::startNewGame() {
 
 void GameState::resetGame() {
     m_simulationRunning = false;
+    m_whitePocketed = false;
+    m_whiteBallPlacing = false;
+    m_firstHitBall = BallType::White;
+    m_anyBallHitCushion = false;
+    m_preShotPocketed.clear();
     m_balls.clear();
     m_player1->resetScore();
     m_player2->resetScore();

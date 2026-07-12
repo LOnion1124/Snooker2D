@@ -174,6 +174,34 @@ void GameViewModel::confirmWhiteBallPlacement(double x, double y) {
     }
 }
 
+void GameViewModel::restartGame() {
+    if (!m_gameState) {
+        return;
+    }
+
+    m_simulationTimer->stop();
+
+    const bool wasPlacingWhiteBall = m_isPlacingWhiteBall;
+    m_isPlacingWhiteBall = false;
+    if (wasPlacingWhiteBall) {
+        emit whiteBallPlacingChanged();
+    }
+
+    if (m_cueAngle != 0.0) {
+        m_cueAngle = 0.0;
+        emit cueAngleChanged();
+    }
+    if (m_cuePower != 50.0) {
+        m_cuePower = 50.0;
+        emit cuePowerChanged();
+    }
+
+    m_gameState->startNewGame();
+    refreshBallPositions();
+    refreshScores();
+    emit gameRestarted();
+}
+
 void GameViewModel::onModelWhiteBallPlacingStarted() {
     m_isPlacingWhiteBall = true;
     emit whiteBallPlacingChanged();

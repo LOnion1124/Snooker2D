@@ -47,6 +47,7 @@ public:
     Q_INVOKABLE void confirmFoul();
     Q_INVOKABLE void selectFreeBall(int ballTypeInt);
     Q_INVOKABLE void confirmWhiteBallPlacement(double x, double y);
+    Q_INVOKABLE void restartGame();
 
 signals:
     void ballPositionsChanged();
@@ -60,6 +61,7 @@ signals:
     void foulOccurred(const QString& description);
     void gameOver(int winnerPlayer);
     void whiteBallPlacingChanged();
+    void gameRestarted();
 
 private slots:
     void onModelPhaseChanged(GamePhase phase);
