@@ -1,5 +1,4 @@
 #include "MathUtils.h"
-#include <cmath>
 
 namespace Snooker2D {
 namespace MathUtils {
@@ -32,7 +31,11 @@ Vector2D normalize(const Vector2D& v) {
 
 Vector2D reflect(const Vector2D& v, const Vector2D& normal) {
     double d = dot(v, normal);
-    return Vector2D(v.x - 2 * d * normal.x, v.y - 2 * d * normal.y);
+    return Vector2D(v.x - 2.0 * d * normal.x, v.y - 2.0 * d * normal.y);
+}
+
+Vector2D perpendicular(const Vector2D& v) {
+    return Vector2D(-v.y, v.x);
 }
 
 // ============================================================================
@@ -46,7 +49,10 @@ double distance(const Vector2D& a, const Vector2D& b) {
 }
 
 bool circleOverlap(const Vector2D& c1, double r1, const Vector2D& c2, double r2) {
-    return distance(c1, c2) < (r1 + r2);
+    double dx = c1.x - c2.x;
+    double dy = c1.y - c2.y;
+    double rsum = r1 + r2;
+    return (dx * dx + dy * dy) < (rsum * rsum);
 }
 
 } // namespace MathUtils
@@ -54,6 +60,8 @@ bool circleOverlap(const Vector2D& c1, double r1, const Vector2D& c2, double r2)
 // ============================================================================
 // Vector2D 成员函数实现
 // ============================================================================
+
+// --- 算数运算符 ---
 
 Vector2D Vector2D::operator+(const Vector2D& other) const {
     return Vector2D(x + other.x, y + other.y);
@@ -63,6 +71,10 @@ Vector2D Vector2D::operator-(const Vector2D& other) const {
     return Vector2D(x - other.x, y - other.y);
 }
 
+Vector2D Vector2D::operator-() const {
+    return Vector2D(-x, -y);
+}
+
 Vector2D Vector2D::operator*(double scalar) const {
     return Vector2D(x * scalar, y * scalar);
 }
@@ -70,6 +82,40 @@ Vector2D Vector2D::operator*(double scalar) const {
 Vector2D Vector2D::operator/(double scalar) const {
     return Vector2D(x / scalar, y / scalar);
 }
+
+// --- 复合赋值运算符 ---
+
+Vector2D& Vector2D::operator+=(const Vector2D& other) {
+    x += other.x; y += other.y;
+    return *this;
+}
+
+Vector2D& Vector2D::operator-=(const Vector2D& other) {
+    x -= other.x; y -= other.y;
+    return *this;
+}
+
+Vector2D& Vector2D::operator*=(double scalar) {
+    x *= scalar; y *= scalar;
+    return *this;
+}
+
+Vector2D& Vector2D::operator/=(double scalar) {
+    x /= scalar; y /= scalar;
+    return *this;
+}
+
+// --- 比较运算符 ---
+
+bool Vector2D::operator==(const Vector2D& other) const {
+    return x == other.x && y == other.y;
+}
+
+bool Vector2D::operator!=(const Vector2D& other) const {
+    return !(*this == other);
+}
+
+// --- 向量运算（委托给 MathUtils）---
 
 double Vector2D::dot(const Vector2D& other) const {
     return MathUtils::dot(*this, other);

@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
@@ -6,32 +8,35 @@ namespace Snooker2D {
 // ============================================================================
 // 球桌尺寸（单位：像素 / 游戏单位）
 // ============================================================================
-constexpr double TABLE_WIDTH = 800.0;   // 台面内径宽度
-constexpr double TABLE_HEIGHT = 400.0;  // 台面内径高度
+constexpr double TABLE_WIDTH  = 800.0;   // 台面内径宽度
+constexpr double TABLE_HEIGHT = 400.0;   // 台面内径高度
 
 // ============================================================================
 // 球参数
 // ============================================================================
-constexpr double BALL_RADIUS = 10.0;        // 球半径
-constexpr double BALL_MASS = 1.0;           // 标准球质量
+constexpr double BALL_RADIUS = 10.0;     // 球半径
+constexpr double BALL_MASS   = 1.0;      // 标准球质量
+constexpr int    RED_COUNT   = 15;       // 红球数量
+constexpr int    TOTAL_BALLS  = 22;      // 总球数（1白 + 15红 + 6彩）
 
 // ============================================================================
 // 袋口参数
 // ============================================================================
-constexpr double POCKET_RADIUS = 16.0;      // 袋口判定半径（略大于球半径）
+constexpr double POCKET_RADIUS = 16.0;   // 袋口判定半径（略大于球半径）
 
 // ============================================================================
 // 物理参数
 // ============================================================================
-constexpr double FRICTION_COEFFICIENT = 0.98;   // 每帧摩擦系数（模拟减速）
-constexpr double COLLISION_RESTITUTION = 0.96;   // 碰撞恢复系数
-constexpr double MIN_VELOCITY = 0.05;            // 速度阈值（低于此值视为停止）
+constexpr double DELTA_TIME            = 1.0 / 60.0;  // 固定物理步长（60 fps）
+constexpr double FRICTION_COEFFICIENT  = 0.98;        // 每帧摩擦系数
+constexpr double COLLISION_RESTITUTION = 0.96;        // 碰撞恢复系数
+constexpr double MIN_VELOCITY          = 0.05;        // 速度阈值（低于此值视为停止）
 
 // ============================================================================
 // 游戏参数
 // ============================================================================
-constexpr int MAX_POWER = 100;              // 最大力度
-constexpr double MAX_SPEED = 15.0;          // 最大初速度
+constexpr int    MAX_POWER  = 100;      // 最大力度
+constexpr double MAX_SPEED  = 15.0;     // 最大初速度
 
 } // namespace Snooker2D
 
