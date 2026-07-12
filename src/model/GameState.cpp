@@ -70,7 +70,7 @@ void GameState::initBalls() {
     m_balls.push_back(std::move(pink));
 
     auto black = std::make_unique<Ball>(BallType::Black);
-    black->resetPosition(Vector2D(TABLE_WIDTH * 0.375, 0.0)); // (300, 0)
+    black->resetPosition(Vector2D(TABLE_WIDTH * 0.39, 0.0)); // (300, 0)
     m_balls.push_back(std::move(black));
 
     // === 3. 15 颗红球（三角阵） ===
