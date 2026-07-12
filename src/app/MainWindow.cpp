@@ -74,17 +74,22 @@ void MainWindow::initGame() {
     m_gameView->setViewModel(m_gameViewModel);
     m_cueControl->setViewModel(m_cueViewModel);
     m_scoreBoard->setViewModel(m_scoreViewModel);
+    m_gameInfoPanel->setViewModel(m_gameViewModel);
 
     // 开始游戏
     m_gameState->startNewGame();
 }
 
 void MainWindow::setupBindings() {
-    // 击球请求：CueControlViewModel → GameViewModel
+    // 击球请求：先播放球杆前移动画，动画结束后再进入真实物理模拟。
     connect(m_cueViewModel, &CueControlViewModel::shootRequested,
             this, [this]() {
         m_gameViewModel->setAngle(m_cueViewModel->angle());
         m_gameViewModel->setPower(m_cueViewModel->power());
+        m_gameView->playShotAnimation();
+    });
+    connect(m_gameView, &GameView::shotAnimationFinished,
+            this, [this]() {
         m_gameViewModel->shoot();
     });
 
@@ -94,16 +99,14 @@ void MainWindow::setupBindings() {
     connect(m_cueViewModel, &CueControlViewModel::powerChanged,
             m_gameViewModel, &GameViewModel::setPower);
 
-    // 当前玩家 → GameInfoPanel
-    connect(m_gameViewModel, &GameViewModel::currentPlayerChanged,
+    // 球桌拖拽调整角度后，同步回击球控制面板。
+    connect(m_gameViewModel, &GameViewModel::cueAngleChanged,
             this, [this]() {
-        m_gameInfoPanel->setCurrentPlayer(m_gameViewModel->currentPlayer());
+        m_cueViewModel->setAngle(m_gameViewModel->cueAngle());
     });
-
-    // 游戏阶段 → GameInfoPanel
-    connect(m_gameViewModel, &GameViewModel::gamePhaseChanged,
+    connect(m_gameViewModel, &GameViewModel::cuePowerChanged,
             this, [this]() {
-        m_gameInfoPanel->setPhase(m_gameViewModel->gamePhase());
+        m_cueViewModel->setPower(m_gameViewModel->cuePower());
     });
 
     // 分数同步：GameViewModel → ScoreViewModel
@@ -120,7 +123,6 @@ void MainWindow::setupBindings() {
     connect(m_gameViewModel, &GameViewModel::foulOccurred,
             this, [this](const QString& desc) {
         m_scoreViewModel->setFoulMessage(desc);
-        m_gameInfoPanel->setMessage(desc);
     });
 
     // 比赛结束
@@ -128,12 +130,7 @@ void MainWindow::setupBindings() {
             this, [this](int winner) {
         QString msg = QString("玩家 %1 获胜！").arg(winner);
         m_scoreViewModel->setStatusMessage(msg);
-        m_gameInfoPanel->setMessage(msg);
     });
-
-    // 同步初始状态
-    m_gameInfoPanel->setCurrentPlayer(m_gameViewModel->currentPlayer());
-    m_gameInfoPanel->setPhase(m_gameViewModel->gamePhase());
 }
 
 } // namespace Snooker2D
