@@ -81,13 +81,7 @@ void MainWindow::initGame() {
 }
 
 void MainWindow::setupBindings() {
-    // 击球请求：先播放球杆前移动画，动画结束后再进入真实物理模拟。
-    connect(m_cueViewModel, &CueControlViewModel::shootRequested,
-            this, [this]() {
-        m_gameViewModel->setAngle(m_cueViewModel->angle());
-        m_gameViewModel->setPower(m_cueViewModel->power());
-        m_gameView->playShotAnimation();
-    });
+    // 球桌左键单击先播放球杆前移动画，动画结束后再进入真实物理模拟。
     connect(m_gameView, &GameView::shotAnimationFinished,
             this, [this]() {
         m_gameViewModel->shoot();
@@ -99,7 +93,7 @@ void MainWindow::setupBindings() {
     connect(m_cueViewModel, &CueControlViewModel::powerChanged,
             m_gameViewModel, &GameViewModel::setPower);
 
-    // 球桌拖拽调整角度后，同步回击球控制面板。
+    // 球桌鼠标移动/滚轮调整角度和力度后，同步回击球控制面板。
     connect(m_gameViewModel, &GameViewModel::cueAngleChanged,
             this, [this]() {
         m_cueViewModel->setAngle(m_gameViewModel->cueAngle());
