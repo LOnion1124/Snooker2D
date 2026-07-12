@@ -5,6 +5,7 @@
 #include <QWidget>
 
 class QLabel;
+class QPushButton;
 
 namespace Snooker2D {
 
@@ -25,6 +26,7 @@ private:
     void updatePhase();
     void updateMessage(const QString& message);
     void updateWhiteBallPlacementHint();
+    void restartGame();
     QString phaseStyleSheet(const QString& phaseText) const;
 
     GameViewModel* m_viewModel = nullptr;
@@ -33,6 +35,7 @@ private:
     QLabel* m_phaseLabel = nullptr;
     QLabel* m_placementHintLabel = nullptr;
     QLabel* m_messageLabel = nullptr;
+    QPushButton* m_restartButton = nullptr;
 };
 
 } // namespace Snooker2D

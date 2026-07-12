@@ -112,6 +112,11 @@ void MainWindow::setupBindings() {
             this, [this]() {
         m_scoreViewModel->setPlayer2Score(m_gameViewModel->player2Score());
     });
+    connect(m_gameViewModel, &GameViewModel::gameRestarted,
+            this, [this]() {
+        m_scoreViewModel->setFoulMessage(QString());
+        m_scoreViewModel->setStatusMessage(QString());
+    });
 
     // 犯规提示
     connect(m_gameViewModel, &GameViewModel::foulOccurred,

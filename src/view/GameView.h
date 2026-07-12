@@ -55,6 +55,7 @@ private:
     void tryPlaceWhiteBall(const QPointF& mousePosition);
     double cueGap() const;
     void updateCueAngleFromMouse(const QPointF& mousePosition);
+    void cancelShotAnimation();
     void updateShotAnimation();
 
     GameViewModel* m_viewModel = nullptr;

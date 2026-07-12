@@ -46,6 +46,8 @@ void GameView::setViewModel(GameViewModel* viewModel) {
                 this, &GameView::refresh);
         connect(m_viewModel, &GameViewModel::whiteBallPlacingChanged,
                 this, &GameView::refresh);
+        connect(m_viewModel, &GameViewModel::gameRestarted,
+                this, &GameView::cancelShotAnimation);
         refresh();
     }
 }
@@ -481,6 +483,14 @@ void GameView::updateCueAngleFromMouse(const QPointF& mousePosition) {
     }
 
     m_viewModel->setAngle(angle);
+}
+
+void GameView::cancelShotAnimation() {
+    m_shotAnimationTimer->stop();
+    m_isShotAnimating = false;
+    m_hideAimingTools = false;
+    m_shotAnimationGap = cueGap();
+    update();
 }
 
 void GameView::updateShotAnimation() {

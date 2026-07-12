@@ -2,6 +2,7 @@
 #include "../viewmodel/GameViewModel.h"
 
 #include <QLabel>
+#include <QPushButton>
 #include <QVBoxLayout>
 #include <QFont>
 
@@ -31,6 +32,10 @@ void GameInfoPanel::setViewModel(GameViewModel* viewModel) {
             this, &GameInfoPanel::updatePhase);
     connect(m_viewModel, &GameViewModel::whiteBallPlacingChanged,
             this, &GameInfoPanel::updateWhiteBallPlacementHint);
+    connect(m_viewModel, &GameViewModel::gameRestarted,
+            this, [this]() {
+        updateMessage(QString());
+    });
     connect(m_viewModel, &GameViewModel::foulOccurred,
             this, &GameInfoPanel::updateMessage);
     connect(m_viewModel, &GameViewModel::gameOver,
@@ -83,10 +88,30 @@ void GameInfoPanel::setupUI() {
     m_messageLabel->setAlignment(Qt::AlignCenter);
     m_messageLabel->setWordWrap(true);
 
+    // 重启游戏
+    m_restartButton = new QPushButton(QStringLiteral("重启游戏"), this);
+    m_restartButton->setCursor(Qt::PointingHandCursor);
+    m_restartButton->setStyleSheet(QStringLiteral(
+        "QPushButton {"
+        "background-color: #3f7f5f;"
+        "color: white;"
+        "border: none;"
+        "border-radius: 4px;"
+        "padding: 8px 12px;"
+        "font-weight: bold;"
+        "}"
+        "QPushButton:hover { background-color: #4f9a73; }"
+        "QPushButton:pressed { background-color: #34694f; }"
+    ));
+    connect(m_restartButton, &QPushButton::clicked,
+            this, &GameInfoPanel::restartGame);
+
     layout->addWidget(m_playerIndicator);
     layout->addWidget(m_phaseLabel);
     layout->addWidget(m_placementHintLabel);
     layout->addWidget(m_messageLabel);
+    layout->addSpacing(12);
+    layout->addWidget(m_restartButton);
     layout->addStretch();
 }
 
@@ -116,6 +141,14 @@ void GameInfoPanel::updateWhiteBallPlacementHint() {
 
     const bool isPlacingWhiteBall = m_viewModel && m_viewModel->isPlacingWhiteBall();
     m_placementHintLabel->setVisible(isPlacingWhiteBall);
+}
+
+void GameInfoPanel::restartGame() {
+    if (!m_viewModel) {
+        return;
+    }
+
+    m_viewModel->restartGame();
 }
 
 QString GameInfoPanel::phaseStyleSheet(const QString& phaseText) const {
