@@ -1,0 +1,116 @@
+\documentclass[11pt]{ctexart}
+
+\usepackage{geometry}
+\geometry{a4paper, margin=2.5cm}
+
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{longtable}
+\usepackage{array}
+
+\title{Snooker2D 中期分报告（开发者 B）}
+\author{Ironhammer Std}
+\date{2026年7月13日}
+
+\begin{document}
+
+\maketitle
+
+\section{负责范围}
+
+Model 层（游戏状态与规则引擎）和 ViewModel 层（MVVM 桥接）。负责文件：
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{文件} & \textbf{说明} \\
+\hline
+\texttt{src/model/Ball.h/.cpp} & 球的属性：类型、位置、速度、是否落袋 \\
+\texttt{src/model/Table.h/.cpp} & 球桌：尺寸、库边定义、袋口坐标 \\
+\texttt{src/model/Physics.h/.cpp} & 物理引擎：碰撞检测、摩擦力、袋口检测 \\
+\texttt{src/model/GameState.h/.cpp} & 核心状态机：开球、击球、回合切换 \\
+\texttt{src/model/Player.h/.cpp} & 玩家：姓名、得分 \\
+\texttt{src/model/Rules.h/.cpp} & 规则模块：犯规检测、罚分计算 \\
+\texttt{src/viewmodel/GameViewModel.h/.cpp} & 核心 ViewModel：属性暴露、命令实现 \\
+\texttt{src/viewmodel/CueControlViewModel.h/.cpp} & 击球控制：角度、力度、加塞 \\
+\texttt{src/viewmodel/ScoreViewModel.h/.cpp} & 计分板数据：双方累计分、单杆分 \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{已完成工作}
+
+\subsection{Model 层数据结构（7/10）}
+
+\begin{itemize}
+\item \textbf{Ball}：位置（Vector2D）、速度、类型（BallType 枚举）、落袋状态、台面状态。22 颗球按斯诺克标准摆法初始化
+\item \textbf{Table}：800×400 台面、6 条库边（Cushion 结构体）、6 个袋口（Pocket 结构体）
+\item \textbf{Player}：得分属性（scoreChanged 信号）、姓名
+\end{itemize}
+
+\subsection{物理引擎（7/12）}
+
+\begin{enumerate}[leftmargin=*]
+\item 匀速直线运动（moveBalls：位置 += 速度 × deltaTime）
+\item 摩擦力减速（applyFriction：速度 *= FRICTION\_COEFFICIENT，0.99/帧）
+\item 速度阈值停止（MIN\_VELOCITY = 0.05，低于此值设为零）
+\item 球-球弹性碰撞（resolveBallCollision）：动量守恒碰撞公式
+\item 球-库边反弹（resolveCushionCollision）：通过 closestPointOnSegment 计算库边接触点，按库边弹性系数反射
+\item 袋口检测（checkPocketDetection）：球心与袋口距离 < POCKET\_RADIUS 判定落袋
+\end{enumerate}
+
+物理参数：碰撞恢复系数 0.88，库边恢复系数 0.77，摩擦系数 0.99，固定时间步长 1/60 秒。
+
+\subsection{规则引擎初版（7/12--7/13）}
+
+\begin{itemize}
+\item FoulResult 结构体：犯规类型 + 描述文本 + 罚分
+\item 犯规检测框架：空杆、打错球、白球落袋、无球碰库
+\item 罚分计算：取被犯规球分值，最少罚 4 分
+\item 白球落袋后复位逻辑
+\item 开局黑球位置重叠修复
+\item 分数处理与回合转移
+\end{itemize}
+
+\subsection{ViewModel 桥接}
+
+\begin{itemize}
+\item GameViewModel：Q\_PROPERTY 暴露球位置列表、当前玩家、游戏阶段、比分、角度/力度；Q\_INVOKABLE 命令 shoot/setAngle/setPower/confirmFoul/selectFreeBall
+\item CueControlViewModel：角度/力度属性、shootRequested 信号、reset/setAngleAndPower 方法
+\item ScoreViewModel：双方得分、单杆分、犯规消息、状态消息属性
+\item Model 信号 → ViewModel 属性同步：onModelPhaseChanged / onModelTurnChanged / onModelSimulationFinished / onModelFoulOccurred
+\end{itemize}
+
+\subsection{跨层协调}
+
+\begin{itemize}
+\item 在 MainWindow 中补充角度/力度实时同步连接（CueControlVM ↔ GameVM）
+\item 配合 A 完成击球流程从按钮到鼠标的重构
+\item 新增 GameViewModel::gameRestarted 信号，支持比赛重启时的状态清理
+\end{itemize}
+
+\section{提交统计}
+
+共 5 条提交，日期 2026-07-12 至 2026-07-13。工作集中在中期检查前两日。
+
+\section{技术要点}
+
+\begin{itemize}
+\item 物理引擎采用固定时间步长（1/60s），避免帧率波动影响模拟精度
+\item 球-球碰撞使用弹性碰撞公式，基于两球心连线方向交换速度分量
+\item 库边碰撞通过 closestPointOnSegment 计算接触点法线，精度优于简单 AABB 检测
+\item Model 层所有类继承 QObject，使用 Qt 信号/槽通知状态变更
+\item ViewModel 不直接耦合 View 层，通过 Q\_PROPERTY NOTIFY 信号推送更新
+\end{itemize}
+
+\section{待完成}
+
+\begin{itemize}
+\item 完整斯诺克规则（合法击球判定、所有犯规场景完备、自由球）
+\item 彩球按序清空逻辑
+\item 输赢判定（红球清空 + 彩球按序 + 分差不可追）
+\item Model 层单元测试
+\item 边界情况测试（极端角度、零力度、贴库球）
+\end{itemize}
+
+\end{document}

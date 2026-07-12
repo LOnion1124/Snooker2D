@@ -1,0 +1,113 @@
+\documentclass[11pt]{ctexart}
+
+\usepackage{geometry}
+\geometry{a4paper, margin=2.5cm}
+
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{longtable}
+\usepackage{array}
+
+\title{Snooker2D 项目中期总结报告}
+\author{开发者 A：刘XX \quad 开发者 B：XXX \quad 开发者 C：Ventub}
+\date{2026年7月13日}
+
+\begin{document}
+
+\maketitle
+
+\section{项目概况}
+
+Snooker2D 是一个基于 C++17 和 Qt 6 的 2D 斯诺克台球游戏，采用课程讲授的 MVVM 五层架构（Common / Model / ViewModel / View / App）。项目三人协作，10 天工期，当前处于第 5 天中期检查节点。
+
+\section{技术架构}
+
+项目严格按照 MVVM 模式拆分为五个独立编译的静态库：
+
+\begin{center}
+\begin{tabular}{|c|l|l|l|}
+\hline
+\textbf{层} & \textbf{职责} & \textbf{依赖} & \textbf{负责人} \\
+\hline
+Common & 全局类型、常量、数学工具 & 无 & C \\
+Model & 游戏状态机、物理引擎、规则判定 & Common + Qt::Core & B \\
+ViewModel & 数据转换、属性暴露、命令绑定 & Model + Qt::Core & B \\
+View & 界面渲染、用户输入 & ViewModel + Qt::Widgets & A \\
+App & 对象装配、依赖注入 & 所有层 & C \\
+\hline
+\end{tabular}
+\end{center}
+
+数据流方向为 Model（信号）→ ViewModel（属性）→ View（重绘），反向为 View（用户操作）→ ViewModel（命令）→ Model（状态变更）。Model 层不依赖 Qt Widgets，View 层不直接访问 Model。
+
+\section{进度总览}
+
+\begin{center}
+\begin{tabular}{|c|l|c|c|}
+\hline
+\textbf{层} & \textbf{负责人} & \textbf{完成度} & \textbf{关键产出} \\
+\hline
+Common & C & 95\% & 常量、类型、向量/几何工具函数 \\
+App & C & 80\% & 构建配置、MainWindow 组装、信号连接 \\
+Model & B & 70\% & 球/球桌数据结构、物理引擎、规则引擎初版 \\
+ViewModel & B & 60\% & 三个 ViewModel 属性/命令定义 \\
+View & A & 75\% & 球桌渲染、鼠标交互、瞄准线、杆动画 \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{架构落地情况}
+
+\begin{enumerate}[leftmargin=*]
+\item 五层 target 在 CMakeLists.txt 中编译为独立静态库，自底向上链接
+\item Model 层纯 C++，不依赖 Qt Widgets，通过 QObject 信号与 ViewModel 通信
+\item ViewModel 通过 Q\_PROPERTY 暴露数据、Q\_INVOKABLE 暴露命令
+\item View 通过 setViewModel() 接收 ViewModel，不直接接触 Model
+\item App 层在 MainWindow 中完成全部对象的依赖注入和跨层信号绑定
+\end{enumerate}
+
+\section{Git 协作情况}
+
+截止中期检查，远程仓库共 22 条提交记录：
+
+\begin{center}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{开发者} & \textbf{提交数} & \textbf{负责层} \\
+\hline
+LOnion1124（A） & 14 & View + 部分 App \\
+Ironhammer Std（B） & 5 & Model / ViewModel \\
+Ventub（C） & 3 & Common / App \\
+\hline
+\end{tabular}
+\end{center}
+
+提交遵循 \texttt{type(layer): description} 规范，支持按层过滤历史。每位成员均有有效提交记录，满足评分标准中“成员协作紧密，且在版本控制系统上都有有效的提交”的要求。
+
+\section{已完成功能}
+
+\begin{itemize}
+\item 斯诺克标准 22 颗球（1 白 + 15 红 + 6 彩）的初始摆球
+\item 球桌渲染（绿色台面、棕色库边、6 个袋口）
+\item 鼠标瞄准与击球（含球杆动画）
+\item 力度/角度双模控制（控件滑块 + 鼠标拖动）
+\item 球-球弹性碰撞、球-库边反弹
+\item 摩擦力减速、速度阈值静止
+\item 袋口检测与落袋
+\item 计分板与游戏信息面板
+\item D 区白球复位
+\item 比赛重启
+\end{itemize}
+
+\section{后续计划}
+
+\begin{enumerate}[leftmargin=*]
+\item 完善斯诺克规则引擎（犯规判定、罚分、自由球、输赢判定）
+\item 补充 Common/Model 层单元测试
+\item 端到端集成测试（完整对局）
+\item CI/CD 配置
+\item UI 美化与资源整理
+\item 文档完善
+\end{enumerate}
+
+\end{document}

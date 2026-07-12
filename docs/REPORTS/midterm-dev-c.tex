@@ -1,0 +1,154 @@
+\documentclass[11pt]{ctexart}
+
+\usepackage{geometry}
+\geometry{a4paper, margin=2.5cm}
+
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{longtable}
+\usepackage{array}
+
+\title{Snooker2D 中期分报告（开发者 C）}
+\author{Ventub}
+\date{2026年7月13日}
+
+\begin{document}
+
+\maketitle
+
+\section{负责范围}
+
+Common 层（公共类型与工具）、App 层（应用入口与依赖注入）以及项目构建配置。负责文件：
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{文件} & \textbf{说明} \\
+\hline
+\texttt{src/common/Constants.h} & 球桌/球/袋口/物理/游戏常量 \\
+\texttt{src/common/Types.h} & Vector2D、BallType、FoulType、GamePhase、PlayerId \\
+\texttt{src/common/MathUtils.h/.cpp} & 向量运算、几何检测工具函数 \\
+\texttt{src/main.cpp} & QApplication 入口 \\
+\texttt{src/app/AppConfig.h} & 应用级配置 \\
+\texttt{src/app/MainWindow.h/.cpp} & 五层组装与跨层信号绑定 \\
+\texttt{CMakeLists.txt} & 五层 target 构建配置 \\
+\texttt{vcpkg.json} & 依赖清单 \\
+\texttt{.gitignore} & 构建/IDE 忽略规则 \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{已完成工作}
+
+\subsection{Common 层}
+
+\subsubsection{Constants.h}
+
+定义了所有游戏维度的基础常量：
+
+\begin{itemize}
+\item 球桌（TABLE\_WIDTH=800, TABLE\_HEIGHT=400）
+\item 球参数（BALL\_RADIUS=10, BALL\_MASS=1.0, RED\_COUNT=15, TOTAL\_BALLS=22）
+\item 袋口（POCKET\_RADIUS=16）
+\item D 区（BAULK\_LINE\_X, D\_RADIUS）—— 配合物理层白球复位
+\item 物理（DELTA\_TIME=1/60, FRICTION\_COEFFICIENT=0.99, COLLISION\_RESTITUTION=0.88, CUSHION\_RESTITUTION=0.77, MIN\_VELOCITY=0.05）
+\item 游戏（MAX\_POWER=100, MAX\_SPEED=15.0）
+\end{itemize}
+
+\subsubsection{Types.h}
+
+\begin{itemize}
+\item Vector2D 结构体：定义二维向量，提供算数运算符（+/-/*/ / /一元-）、复合赋值运算符（+=/-=/*=//=）、比较运算符（==/!=）、向量运算（dot/cross/length/normalized）
+\item BallType 枚举（8 种球，White=0 到 Black=7）
+\item ballValue() 辅助函数：返回球对应分值（红 1、黄 2、绿 3、棕 4、蓝 5、粉 6、黑 7、白 0）
+\item isColorBall() 辅助函数：判断是否为彩球
+\item FoulType 枚举（7 种犯规类型）
+\item GamePhase 枚举（6 阶段：未开始/红球/彩球/自由球/犯规/结束）
+\item PlayerId 枚举 + oppositePlayer() 辅助函数
+\end{itemize}
+
+\subsubsection{MathUtils.h/.cpp}
+
+\begin{itemize}
+\item 向量运算：dot（点积）、cross（叉积）、length、lengthSquared、normalize、reflect（反射）、closestPointOnSegment（点到线段最近点）
+\item 几何运算：distance（距离）、circleOverlap（圆重叠检测）
+\item Vector2D 成员函数委托给 MathUtils 自由函数，避免代码重复
+\end{itemize}
+
+\subsubsection{设计决策}
+
+\begin{enumerate}[leftmargin=*]
+\item \textbf{FoulResult 不在 Common 层}：FoulResult 结构体定义在 Model 层 Rules.h，因其含 QString 成员依赖 Qt，不适合放入纯 C++ 的 Common 层。ViewModel 通过前置声明引用，编译无问题。
+\item \textbf{袋口坐标不在 Constants.h}：Pocket 结构体由 Model 层 Table.h 管理。Constants 仅存放独立标量。
+\item \textbf{不做预铺}：MathUtils 仅实现被调用的函数，不添加“以防万一”的工具函数。
+\end{enumerate}
+
+\subsection{App 层}
+
+\subsubsection{main.cpp}
+
+创建 QApplication 实例，实例化 MainWindow 并进入事件循环。
+
+\subsubsection{AppConfig.h}
+
+定义 APP\_NAME（``Snooker2D''）、APP\_VERSION（``1.0.0''）、窗口默认尺寸（1280×720）。
+
+\subsubsection{MainWindow —— 五层组装}
+
+\begin{enumerate}[leftmargin=*]
+\item \textbf{initGame()}：按依赖顺序创建 Model（GameState）、ViewModel（GameViewModel / CueControlViewModel / ScoreViewModel）、调用 setGameState 绑定 Model 到 ViewModel、通过 setViewModel() 注入 View、调用 startNewGame() 开始游戏。
+\item \textbf{setupBindings()}：建立 9 条跨层信号连接：
+  \begin{itemize}
+  \item GameView 鼠标击球 $\to$ GameViewModel::shoot()
+  \item CueControlVM $\leftrightarrow$ GameVM 角度/力度双向同步
+  \item GameVM 分数/犯规/结束 $\to$ ScoreVM
+  \item GameVM 重启 $\to$ ScoreVM 清空提示
+  \end{itemize}
+\end{enumerate}
+
+GameInfoPanel 已于 7/13 改为 setViewModel 自绑定，MainWindow 不再逐信号转发玩家/阶段变化。
+
+\subsection{构建配置}
+
+\begin{itemize}
+\item CMakeLists.txt：五层静态库自底向上链接（common → model → viewmodel → view → app → exe）
+\item vcpkg.json：声明 qtbase/qtmultimedia 依赖（使用系统安装的 Qt 而非 vcpkg 编译）
+\item .gitignore：涵盖构建输出、CMake 生成文件、Qt 生成文件、IDE 配置
+\end{itemize}
+
+\section{提交统计}
+
+共 3 条提交，日期 2026-07-12：
+
+\begin{center}
+\begin{tabular}{|c|l|}
+\hline
+\textbf{提交} & \textbf{内容} \\
+\hline
+1377b4e & Common 层重构：常量、类型、工具函数整理与规范 \\
+10e857a & Common 层二次整理：统一代码风格，去除冗余注释 \\
+46ae8cd & App 层：实现 MainWindow 的 setupBindings 和 initGame \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{技术要点}
+
+\begin{itemize}
+\item Vector2D 的复合赋值运算符（+=/-=/*=//=）提升物理引擎性能，减少临时对象创建
+\item inline constexpr 辅助函数（ballValue 等）确保零运行时开销
+\item 信号/槽使用 lambda 表达式桥接跨层通信，避免层间头文件渗透
+\item Model 层与 View 层通过 ViewModel 完全解耦
+\item 构建顺序：setupUI() → initGame() → setupBindings()，确保信号连接前对象已就绪
+\end{itemize}
+
+\section{待完成}
+
+\begin{itemize}
+\item Common 层单元测试（MathUtils 向量/几何函数覆盖）
+\item App 层端到端集成测试（完整比赛流程验证）
+\item 持续集成（CI）配置
+\item README.md 填写（项目介绍、构建说明、操作指南）
+\end{itemize}
+
+\end{document}

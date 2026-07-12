@@ -1,0 +1,118 @@
+\documentclass[11pt]{ctexart}
+
+\usepackage{geometry}
+\geometry{a4paper, margin=2.5cm}
+
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{longtable}
+\usepackage{array}
+
+\title{Snooker2D 中期分报告（开发者 A）}
+\author{LOnion1124}
+\date{2026年7月13日}
+
+\begin{document}
+
+\maketitle
+
+\section{负责范围}
+
+View 层界面实现，兼 UI 资源管理与部分 App 层协调。负责文件：
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{文件} & \textbf{说明} \\
+\hline
+\texttt{src/view/GameView.h/.cpp} & 球桌渲染、球绘制、瞄准线、球杆动画 \\
+\texttt{src/view/CueControl.h/.cpp} & 力度/角度滑块控件、数值显示 \\
+\texttt{src/view/ScoreBoard.h/.cpp} & 计分面板 \\
+\texttt{src/view/GameInfoPanel.h/.cpp} & 游戏状态信息栏 \\
+\hline
+\end{tabular}
+\end{center}
+
+此外参与了 App 层 MainWindow.cpp 的击球流程重构和重启功能协调。
+
+\section{已完成工作}
+
+\subsection{球桌渲染（7/10）}
+
+实现 GameView::paintEvent 中的完整绘制管线：
+
+\begin{enumerate}[leftmargin=*]
+\item 绿色台面：调用 QPainter::drawRect，根据窗口大小自适应缩放
+\item 棕色库边：6px 边框，通过 adjusted() 外扩
+\item 6 个袋口：四角 + 两边中点，黑色圆形
+\item 22 颗球：从 GameViewModel 获取位置列表，按 BallType 查表赋色，带高光效果
+\item 坐标转换：游戏坐标 → 像素坐标，支持居中坐标系
+\end{enumerate}
+
+\subsection{鼠标交互（7/13）}
+
+将击球操作从按钮改为鼠标操作，更符合台球游戏直觉：
+
+\begin{enumerate}[leftmargin=*]
+\item 鼠标移动：调整瞄准方向，实时更新白球出发角度
+\item 鼠标滚轮：调节击球力度
+\item 左键按下：触发球杆后拉动画
+\item 松开左键：球杆前推，发射 shotAnimationFinished 信号
+\end{enumerate}
+
+\subsection{瞄准线与球杆}
+
+\begin{itemize}
+\item 瞄准辅助线：从白球沿角度方向绘虚线
+\item 球杆渲染：在白球后方绘制木色球杆，跟随鼠标位置伸缩
+\item 球杆动画：QPropertyAnimation 驱动物理击球时的前推后拉效果
+\end{itemize}
+
+\subsection{GameInfoPanel 重构（7/13）}
+
+将 GameInfoPanel 从被动接收 setter 调用改为绑定 GameViewModel：
+
+\begin{itemize}
+\item 新增 setViewModel(GameViewModel*) 方法
+\item 内部连接 currentPlayerChanged / gamePhaseChanged 信号
+\item 自动更新当前玩家指示、阶段提示文本
+\item 减轻 MainWindow 的信号转发负担
+\end{itemize}
+
+\subsection{D 区白球放置（7/13）}
+
+白球落袋后，在 D 区半圆内点击放置白球：
+\begin{itemize}
+\item 点击位置判定：是否在 D 区范围内
+\item 白球放置：更新 GameViewModel 的白球位置属性
+\item 约束：不能与其他球位置重叠
+\end{itemize}
+
+\subsection{比赛重启按钮（7/13）}
+
+在界面中添加重新开始按钮，触发 GameState 的 resetGame() 流程。
+
+\section{提交统计}
+
+共 14 条提交，涵盖日期 2026-07-09 至 2026-07-13。
+
+\section{技术要点}
+
+\begin{itemize}
+\item QPainter 抗锯齿渲染（Antialiasing + SmoothPixmapTransform）
+\item QPropertyAnimation 实现球杆动画
+\item 坐标系统分离：游戏世界坐标与屏幕像素坐标通过 gameToPixel 转换
+\item View 层不持有 Model 指针，所有数据通过 GameViewModel::ballPositions 属性获取
+\end{itemize}
+
+\section{待完成}
+
+\begin{itemize}
+\item 球落袋动画/移除渐变效果
+\item 犯规弹窗/自由球选择 UI
+\item 比赛结束画面
+\item 整体 UI 美化与缩放适配
+\item 资源文件（图片/音效）整理
+\end{itemize}
+
+\end{document}
