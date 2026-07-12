@@ -24,12 +24,14 @@ private:
     void updateCurrentPlayer();
     void updatePhase();
     void updateMessage(const QString& message);
+    void updateWhiteBallPlacementHint();
     QString phaseStyleSheet(const QString& phaseText) const;
 
     GameViewModel* m_viewModel = nullptr;
 
     QLabel* m_playerIndicator = nullptr;
     QLabel* m_phaseLabel = nullptr;
+    QLabel* m_placementHintLabel = nullptr;
     QLabel* m_messageLabel = nullptr;
 };
 

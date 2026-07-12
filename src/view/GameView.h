@@ -42,13 +42,17 @@ protected:
 private:
     void drawTable(QPainter& painter);
     void drawPockets(QPainter& painter);
+    void drawWhiteBallPlacementGuide(QPainter& painter);
     void drawBalls(QPainter& painter);
     void drawAimingGuide(QPainter& painter);
     void drawCue(QPainter& painter);
     QPointF gameToPixel(double gameX, double gameY) const;
+    QPointF pixelToGame(const QPointF& pixelPosition) const;
     QColor ballColor(int ballType) const;
     bool cueBallPixelPosition(QPointF* position) const;
     bool aimingToolsVisible() const;
+    bool isInWhiteBallPlacementZone(const QPointF& gamePosition) const;
+    void tryPlaceWhiteBall(const QPointF& mousePosition);
     double cueGap() const;
     void updateCueAngleFromMouse(const QPointF& mousePosition);
     void updateShotAnimation();
@@ -59,6 +63,7 @@ private:
     double m_cachedCueAngle = 0.0;
     double m_cachedCuePower = 50.0;
     QString m_cachedGamePhase;
+    bool m_cachedIsPlacingWhiteBall = false;
     bool m_centeredCoordinates = false; // 坐标系检测（refresh 时统一算出）
     bool m_isShotAnimating = false;
     bool m_hideAimingTools = false;

@@ -9,6 +9,7 @@
 #include <QTimer>
 #include <QVariantMap>
 #include <QWheelEvent>
+#include <QPainterPath>
 
 #include <array>
 #include <cmath>
@@ -43,6 +44,8 @@ void GameView::setViewModel(GameViewModel* viewModel) {
                 this, &GameView::refresh);
         connect(m_viewModel, &GameViewModel::cuePowerChanged,
                 this, &GameView::refresh);
+        connect(m_viewModel, &GameViewModel::whiteBallPlacingChanged,
+                this, &GameView::refresh);
         refresh();
     }
 }
@@ -53,12 +56,13 @@ void GameView::refresh() {
         m_cachedCueAngle = m_viewModel->cueAngle();
         m_cachedCuePower = m_viewModel->cuePower();
         m_cachedGamePhase = m_viewModel->gamePhase();
+        m_cachedIsPlacingWhiteBall = m_viewModel->isPlacingWhiteBall();
 
         const bool playablePhase = !m_cachedGamePhase.isEmpty()
             && m_cachedGamePhase != QStringLiteral("未开始")
             && m_cachedGamePhase != QStringLiteral("比赛结束")
             && !m_cachedGamePhase.contains(QStringLiteral("模拟中"));
-        if (playablePhase && !m_isShotAnimating) {
+        if (playablePhase && !m_cachedIsPlacingWhiteBall && !m_isShotAnimating) {
             m_hideAimingTools = false;
             m_shotAnimationGap = cueGap();
         }
@@ -97,8 +101,9 @@ void GameView::paintEvent(QPaintEvent* /*event*/) {
     // 背景
     painter.fillRect(rect(), QColor(40, 40, 40));
 
-    // 绘制顺序：台面 → 袋口 → 球 → 瞄准线 → 球杆
+    // 绘制顺序：台面 → 白球放置提示 → 袋口 → 球 → 瞄准线 → 球杆
     drawTable(painter);
+    drawWhiteBallPlacementGuide(painter);
     drawPockets(painter);
     drawBalls(painter);
     drawAimingGuide(painter);
@@ -129,6 +134,12 @@ void GameView::resizeEvent(QResizeEvent* event) {
 }
 
 void GameView::mousePressEvent(QMouseEvent* event) {
+    if (m_cachedIsPlacingWhiteBall && event->button() == Qt::LeftButton) {
+        tryPlaceWhiteBall(event->position());
+        event->accept();
+        return;
+    }
+
     if (!m_isShotAnimating && aimingToolsVisible() && event->button() == Qt::LeftButton) {
         updateCueAngleFromMouse(event->position());
         playShotAnimation();
@@ -179,6 +190,40 @@ void GameView::drawTable(QPainter& painter) {
     painter.setPen(QPen(QColor(101, 67, 33), 6));
     painter.setBrush(Qt::NoBrush);
     painter.drawRect(m_tableRect.adjusted(-3, -3, 3, 3));
+}
+
+void GameView::drawWhiteBallPlacementGuide(QPainter& painter) {
+    if (!m_cachedIsPlacingWhiteBall || m_tableRect.isEmpty()) {
+        return;
+    }
+
+    const double scaleX = m_tableRect.width() / TABLE_WIDTH;
+    const double scaleY = m_tableRect.height() / TABLE_HEIGHT;
+    const QPointF dCenter = gameToPixel(BAULK_LINE_X, 0.0);
+    const double radiusX = D_RADIUS * scaleX;
+    const double radiusY = D_RADIUS * scaleY;
+    const QRectF dRect(dCenter.x() - radiusX,
+                       dCenter.y() - radiusY,
+                       radiusX * 2.0,
+                       radiusY * 2.0);
+
+    QPainterPath dZonePath;
+    dZonePath.moveTo(dCenter.x(), dCenter.y() - radiusY);
+    dZonePath.arcTo(dRect, 90.0, 180.0);
+    dZonePath.lineTo(dCenter.x(), dCenter.y() + radiusY);
+    dZonePath.closeSubpath();
+
+    painter.save();
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(QColor(0, 255, 0, 45));
+    painter.drawPath(dZonePath);
+
+    painter.setBrush(Qt::NoBrush);
+    painter.setPen(QPen(QColor(180, 255, 180, 180), 2.0));
+    painter.drawPath(dZonePath);
+    painter.drawLine(QPointF(dCenter.x(), m_tableRect.top()),
+                     QPointF(dCenter.x(), m_tableRect.bottom()));
+    painter.restore();
 }
 
 void GameView::drawPockets(QPainter& painter) {
@@ -327,6 +372,21 @@ QPointF GameView::gameToPixel(double gameX, double gameY) const {
                    m_tableRect.top() + tableY * scaleY);
 }
 
+QPointF GameView::pixelToGame(const QPointF& pixelPosition) const {
+    if (m_tableRect.isEmpty()) {
+        return QPointF();
+    }
+
+    const double scaleX = m_tableRect.width() / TABLE_WIDTH;
+    const double scaleY = m_tableRect.height() / TABLE_HEIGHT;
+    const double tableX = (pixelPosition.x() - m_tableRect.left()) / scaleX;
+    const double tableY = (pixelPosition.y() - m_tableRect.top()) / scaleY;
+    const double gameX = m_centeredCoordinates ? tableX - TABLE_WIDTH / 2.0 : tableX;
+    const double gameY = m_centeredCoordinates ? tableY - TABLE_HEIGHT / 2.0 : tableY;
+
+    return QPointF(gameX, gameY);
+}
+
 QColor GameView::ballColor(int ballType) const {
     switch (ballType) {
         case 0: return QColor(255, 255, 255); // White
@@ -359,6 +419,10 @@ bool GameView::cueBallPixelPosition(QPointF* position) const {
 }
 
 bool GameView::aimingToolsVisible() const {
+    if (m_cachedIsPlacingWhiteBall) {
+        return false;
+    }
+
     if (m_hideAimingTools || m_isShotAnimating) {
         return m_isShotAnimating;
     }
@@ -368,6 +432,26 @@ bool GameView::aimingToolsVisible() const {
         && m_cachedGamePhase != QStringLiteral("未开始")
         && m_cachedGamePhase != QStringLiteral("比赛结束")
         && !m_cachedGamePhase.contains(QStringLiteral("模拟中"));
+}
+
+bool GameView::isInWhiteBallPlacementZone(const QPointF& gamePosition) const {
+    const double dx = gamePosition.x() - BAULK_LINE_X;
+    const double dy = gamePosition.y();
+    return gamePosition.x() <= BAULK_LINE_X
+        && dx * dx + dy * dy <= D_RADIUS * D_RADIUS;
+}
+
+void GameView::tryPlaceWhiteBall(const QPointF& mousePosition) {
+    if (!m_viewModel || m_tableRect.isEmpty() || !m_tableRect.contains(mousePosition)) {
+        return;
+    }
+
+    const QPointF gamePosition = pixelToGame(mousePosition);
+    if (!isInWhiteBallPlacementZone(gamePosition)) {
+        return;
+    }
+
+    m_viewModel->confirmWhiteBallPlacement(gamePosition.x(), gamePosition.y());
 }
 
 double GameView::cueGap() const {
