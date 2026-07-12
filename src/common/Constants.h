@@ -17,9 +17,10 @@ constexpr double POCKET_RADIUS = 16.0;
 
 // 物理
 constexpr double DELTA_TIME            = 1.0 / 60.0;
-constexpr double FRICTION_COEFFICIENT  = 0.98;
-constexpr double COLLISION_RESTITUTION = 0.96;
-constexpr double MIN_VELOCITY          = 0.05;
+constexpr double FRICTION_COEFFICIENT  = 0.99;
+constexpr double COLLISION_RESTITUTION   = 0.88;
+constexpr double CUSHION_RESTITUTION     = 0.77;
+constexpr double MIN_VELOCITY            = 0.05;
 
 // 游戏
 constexpr int    MAX_POWER = 100;

@@ -5,6 +5,7 @@
 #include "Physics.h"
 #include "Rules.h"
 #include "../common/Constants.h"
+#include <cmath>
 
 namespace Snooker2D {
 
@@ -37,17 +38,64 @@ void GameState::resetGame() {
 }
 
 void GameState::initBalls() {
-    // TODO: 按标准斯诺克摆球规则放置 22 颗球
-    // 1 颗白球（D 区）、15 颗红球（三角阵）、6 颗彩球（各自点位）
-    double hw = TABLE_WIDTH / 2.0;
-    double hh = TABLE_HEIGHT / 2.0;
+    const double hw = TABLE_WIDTH / 2.0;   // 400
+    const double hh = TABLE_HEIGHT / 2.0;  // 200
 
-    // 白球
+    // --- 开球线与 D 区 ---
+    // 开球线距左侧库边 1/5 台长: -400 + 800/5 = -240
+    const double baulkLine = -TABLE_WIDTH * 0.3;
+
+    // D 区半圆半径（约 0.35 × 半台高）
+    const double dRadius = hh * 0.35;
+
+    // === 1. 白球 (D 区中央偏左) ===
     auto white = std::make_unique<Ball>(BallType::White);
-    white->resetPosition(Vector2D(-hw / 2, 0)); // D 区粗略位置
+    white->resetPosition(Vector2D(-TABLE_WIDTH * 0.35, 0.0)); // (-280, 0)
     m_balls.push_back(std::move(white));
 
-    // TODO: 添加 15 颗红球、黄/绿/棕/蓝/粉/黑球
+    // === 2. 6 颗彩球（各自点位） ===
+    // 黄 = 开球线右端, 绿 = 开球线左端, 棕 = 开球线中央
+    // 蓝 = 台面中心, 粉 = 3/4 台长处, 黑 = 7/8 台长处
+    auto yellow = std::make_unique<Ball>(BallType::Yellow);
+    yellow->resetPosition(Vector2D(baulkLine,  dRadius));
+    m_balls.push_back(std::move(yellow));
+
+    auto green = std::make_unique<Ball>(BallType::Green);
+    green->resetPosition(Vector2D(baulkLine, -dRadius));
+    m_balls.push_back(std::move(green));
+
+    auto brown = std::make_unique<Ball>(BallType::Brown);
+    brown->resetPosition(Vector2D(baulkLine, 0.0));
+    m_balls.push_back(std::move(brown));
+
+    auto blue = std::make_unique<Ball>(BallType::Blue);
+    blue->resetPosition(Vector2D(0.0, 0.0));
+    m_balls.push_back(std::move(blue));
+
+    auto pink = std::make_unique<Ball>(BallType::Pink);
+    pink->resetPosition(Vector2D(TABLE_WIDTH * 0.25, 0.0)); // (200, 0)
+    m_balls.push_back(std::move(pink));
+
+    auto black = std::make_unique<Ball>(BallType::Black);
+    black->resetPosition(Vector2D(TABLE_WIDTH * 0.375, 0.0)); // (300, 0)
+    m_balls.push_back(std::move(black));
+
+    // === 3. 15 颗红球（三角阵） ===
+    // 顶点紧贴粉球后方: apexX = 200 + 2*BALL_RADIUS
+    // 行间距 = sqrt(3) * BALL_RADIUS（正六边形密排）
+    const double apexX = TABLE_WIDTH * 0.25 + 2.0 * BALL_RADIUS;
+    const double rowSpacing = std::sqrt(3.0) * BALL_RADIUS;
+
+    for (int row = 0; row < 5; ++row) {
+        int ballsInRow = row + 1;
+        double rowX = apexX + row * rowSpacing;
+        for (int col = 0; col < ballsInRow; ++col) {
+            double yOffset = (col - row * 0.5) * 2.0 * BALL_RADIUS;
+            auto red = std::make_unique<Ball>(BallType::Red);
+            red->resetPosition(Vector2D(rowX, yOffset));
+            m_balls.push_back(std::move(red));
+        }
+    }
 }
 
 void GameState::performShot(double angle, double power) {

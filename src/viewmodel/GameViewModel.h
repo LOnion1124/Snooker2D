@@ -2,6 +2,7 @@
 #define GAMEVIEWMODEL_H
 
 #include <QObject>
+#include <QTimer>
 #include <QVariantList>
 #include "../common/Types.h"
 
@@ -59,7 +60,9 @@ signals:
 private slots:
     void onModelPhaseChanged(GamePhase phase);
     void onModelTurnChanged();
+    void onModelSimulationStarted();
     void onModelSimulationFinished();
+    void onSimulationTick();
     void onModelFoulOccurred(const struct FoulResult& result);
     void onPlayerScoreChanged(int score);
 
@@ -68,11 +71,13 @@ private:
     void refreshScores();
 
     GameState* m_gameState = nullptr;
+    QTimer* m_simulationTimer = nullptr;
 
     // 属性缓存
     QVariantList m_ballPositions;
     int m_currentPlayer = 0;
     QString m_gamePhase;
+    QString m_baseGamePhase; // 模拟中追加提示时保存基准阶段文本
     int m_player1Score = 0;
     int m_player2Score = 0;
     double m_cueAngle = 0.0;

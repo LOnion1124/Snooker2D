@@ -45,6 +45,15 @@ bool circleOverlap(const Vector2D& c1, double r1,
     return (dx * dx + dy * dy) < (rsum * rsum);
 }
 
+Vector2D closestPointOnSegment(const Vector2D& p,
+                                const Vector2D& a,
+                                const Vector2D& b) {
+    Vector2D ab = b - a;
+    double t = dot(p - a, ab) / dot(ab, ab);
+    t = (t < 0.0) ? 0.0 : (t > 1.0 ? 1.0 : t);
+    return a + ab * t;
+}
+
 } // namespace MathUtils
 
 // Vector2D 成员函数

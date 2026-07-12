@@ -9,6 +9,10 @@ namespace Snooker2D {
 GameViewModel::GameViewModel(QObject* parent)
     : QObject(parent)
 {
+    m_simulationTimer = new QTimer(this);
+    m_simulationTimer->setInterval(1000 / 60); // ~60 FPS
+    connect(m_simulationTimer, &QTimer::timeout,
+            this, &GameViewModel::onSimulationTick);
 }
 
 void GameViewModel::setGameState(GameState* gameState) {
@@ -25,6 +29,8 @@ void GameViewModel::setGameState(GameState* gameState) {
             this, &GameViewModel::onModelPhaseChanged);
     connect(m_gameState, &GameState::turnChanged,
             this, &GameViewModel::onModelTurnChanged);
+    connect(m_gameState, &GameState::simulationStarted,
+            this, &GameViewModel::onModelSimulationStarted);
     connect(m_gameState, &GameState::simulationFinished,
             this, &GameViewModel::onModelSimulationFinished);
     connect(m_gameState, &GameState::foulOccurred,
@@ -106,13 +112,16 @@ void GameViewModel::refreshScores() {
 
 void GameViewModel::onModelPhaseChanged(GamePhase phase) {
     switch (phase) {
-        case GamePhase::NotStarted: m_gamePhase = "未开始"; break;
-        case GamePhase::RedBall:    m_gamePhase = "请击红球"; break;
-        case GamePhase::ColorBall:  m_gamePhase = "请击彩球"; break;
-        case GamePhase::FreeBall:   m_gamePhase = "自由球"; break;
-        case GamePhase::Foul:       m_gamePhase = "犯规"; break;
-        case GamePhase::GameOver:   m_gamePhase = "比赛结束"; break;
+        case GamePhase::NotStarted: m_baseGamePhase = "未开始"; break;
+        case GamePhase::RedBall:    m_baseGamePhase = "请击红球"; break;
+        case GamePhase::ColorBall:  m_baseGamePhase = "请击彩球"; break;
+        case GamePhase::FreeBall:   m_baseGamePhase = "自由球"; break;
+        case GamePhase::Foul:       m_baseGamePhase = "犯规"; break;
+        case GamePhase::GameOver:   m_baseGamePhase = "比赛结束"; break;
     }
+    m_gamePhase = m_baseGamePhase;
+    // 阶段切换时球桌状态可能已变化（如新游戏开局摆球）, 同步刷新
+    refreshBallPositions();
     emit gamePhaseChanged();
 }
 
@@ -123,7 +132,25 @@ void GameViewModel::onModelTurnChanged() {
     }
 }
 
+void GameViewModel::onModelSimulationStarted() {
+    m_simulationTimer->start();
+    m_gamePhase = m_baseGamePhase + " (模拟中...)";
+    emit gamePhaseChanged();
+}
+
+void GameViewModel::onSimulationTick() {
+    if (!m_gameState || !m_gameState->isSimulationRunning()) {
+        m_simulationTimer->stop();
+        return;
+    }
+    m_gameState->updateSimulation();
+    refreshBallPositions();
+}
+
 void GameViewModel::onModelSimulationFinished() {
+    m_simulationTimer->stop();
+    m_gamePhase = m_baseGamePhase;
+    emit gamePhaseChanged();
     refreshBallPositions();
     refreshScores();
 }

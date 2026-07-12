@@ -29,6 +29,15 @@ void Physics::step(double deltaTime, std::vector<Ball*>& balls, const Table& tab
 
     // 5. 施加摩擦力减速
     applyFriction(balls, deltaTime);
+
+    // 6. 硬边界约束 — 防止链式推出越界
+    double hw = table.width() / 2.0;
+    double hh = table.height() / 2.0;
+    double margin = BALL_RADIUS * 0.5;
+    for (auto* ball : balls) {
+        if (ball->isPocketed()) continue;
+        applyHardConstraint(*ball, hw, hh, margin);
+    }
 }
 
 bool Physics::allBallsStopped(const std::vector<Ball*>& balls) {
@@ -86,8 +95,12 @@ void Physics::checkBallCushionCollisions(std::vector<Ball*>& balls, const Table&
     for (auto* ball : balls) {
         if (ball->isPocketed()) continue;
         for (const auto& cushion : table.cushions()) {
-            // TODO: 实现球-线段碰撞检测
-            (void)cushion;
+            Vector2D closest = MathUtils::closestPointOnSegment(
+                ball->position(), cushion.p1, cushion.p2);
+            double dist = MathUtils::distance(ball->position(), closest);
+            if (dist < BALL_RADIUS) {
+                resolveCushionCollision(*ball, closest, dist);
+            }
         }
     }
 }
@@ -106,25 +119,95 @@ void Physics::checkPocketDetection(std::vector<Ball*>& balls, const Table& table
 }
 
 void Physics::resolveBallCollision(Ball& a, Ball& b) {
-    // 弹性碰撞处理（等质量简化）
     Vector2D normal = b.position() - a.position();
-    normal = normal.normalized();
+    double dist = normal.length();
+    double overlap = 2.0 * BALL_RADIUS - dist;
+
+    // 防零除：两球完全重合时选默认方向
+    if (dist < 1e-9) {
+        normal = Vector2D(1.0, 0.0);
+        overlap = 2.0 * BALL_RADIUS;
+    } else {
+        normal = normal.normalized();
+    }
+
+    // 1. 位置分离 — 将两球沿法线各推开 overlap/2
+    if (overlap > 0.0) {
+        Vector2D correction = normal * (overlap * 0.5);
+        a.setPosition(a.position() - correction);
+        b.setPosition(b.position() + correction);
+    }
+
+    // 2. 速度响应 — 等质量弹性碰撞（带恢复系数）
     Vector2D relVel = a.velocity() - b.velocity();
     double velAlongNormal = relVel.dot(normal);
-    if (velAlongNormal > 0) return; // 球正在分离
+    if (velAlongNormal <= 0) return; // 正在分离或静止，跳过
 
     double restitution = COLLISION_RESTITUTION;
-    double impulseScalar = -(1.0 + restitution) * velAlongNormal / 2.0;
+    double impulseScalar = -(1.0 + restitution) * velAlongNormal * 0.5;
 
     Vector2D impulse = normal * impulseScalar;
     a.setVelocity(a.velocity() + impulse);
     b.setVelocity(b.velocity() - impulse);
 }
 
-void Physics::resolveCushionCollision(Ball& ball, const Cushion& cushion) {
-    // TODO: 实现球-库边反弹
-    (void)ball;
-    (void)cushion;
+void Physics::resolveCushionCollision(Ball& ball, const Vector2D& closestPoint, double distance) {
+    Vector2D normal = ball.position() - closestPoint;
+    double normalLen = normal.length();
+
+    // 防零除：球心正好在库边上（极罕见），选向上为默认法线
+    if (normalLen < 1e-9) {
+        normal = Vector2D(0.0, -1.0);
+        normalLen = 1.0;
+    } else {
+        normal = normal.normalized();
+    }
+
+    // 1. 位置修正 — 沿法线推出至刚好接触
+    double overlap = BALL_RADIUS - distance;
+    if (overlap > 0.0) {
+        ball.setPosition(ball.position() + normal * overlap);
+    }
+
+    // 2. 速度反射（带库边恢复系数）
+    double velAlongNormal = MathUtils::dot(ball.velocity(), normal);
+    if (velAlongNormal < 0.0) {
+        Vector2D reflected = ball.velocity() - normal * ((1.0 + CUSHION_RESTITUTION) * velAlongNormal);
+        ball.setVelocity(reflected);
+    }
+}
+
+void Physics::applyHardConstraint(Ball& ball, double halfW, double halfH, double margin) {
+    Vector2D pos = ball.position();
+    Vector2D vel = ball.velocity();
+    double clampX = halfW - margin;
+    double clampY = halfH - margin;
+    bool clamped = false;
+
+    if (pos.x > clampX) {
+        pos.x = clampX;
+        if (vel.x > 0.0) vel.x = 0.0;
+        clamped = true;
+    } else if (pos.x < -clampX) {
+        pos.x = -clampX;
+        if (vel.x < 0.0) vel.x = 0.0;
+        clamped = true;
+    }
+
+    if (pos.y > clampY) {
+        pos.y = clampY;
+        if (vel.y > 0.0) vel.y = 0.0;
+        clamped = true;
+    } else if (pos.y < -clampY) {
+        pos.y = -clampY;
+        if (vel.y < 0.0) vel.y = 0.0;
+        clamped = true;
+    }
+
+    if (clamped) {
+        ball.setPosition(pos);
+        ball.setVelocity(vel);
+    }
 }
 
 } // namespace Snooker2D

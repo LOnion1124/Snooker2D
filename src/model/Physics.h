@@ -32,7 +32,10 @@ private:
     void checkPocketDetection(std::vector<Ball*>& balls, const Table& table);
 
     void resolveBallCollision(Ball& a, Ball& b);
-    void resolveCushionCollision(Ball& ball, const struct Cushion& cushion);
+    void resolveCushionCollision(Ball& ball, const Vector2D& closestPoint, double distance);
+
+    // 硬边界约束 — 防止链式推出导致球越界
+    static void applyHardConstraint(Ball& ball, double halfW, double halfH, double margin);
 };
 
 } // namespace Snooker2D

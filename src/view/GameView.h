@@ -32,6 +32,7 @@ private:
 
     GameViewModel* m_viewModel = nullptr;
     QVariantList m_cachedBallPositions;
+    bool m_centeredCoordinates = false; // 坐标系检测（refresh 时统一算出）
     QRectF m_tableRect; // 球桌绘制区域
 };
 
