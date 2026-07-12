@@ -88,6 +88,12 @@ void MainWindow::setupBindings() {
         m_gameViewModel->shoot();
     });
 
+    // 角度/力度实时同步 → GameViewModel（供瞄准线等用）
+    connect(m_cueViewModel, &CueControlViewModel::angleChanged,
+            m_gameViewModel, &GameViewModel::setAngle);
+    connect(m_cueViewModel, &CueControlViewModel::powerChanged,
+            m_gameViewModel, &GameViewModel::setPower);
+
     // 当前玩家 → GameInfoPanel
     connect(m_gameViewModel, &GameViewModel::currentPlayerChanged,
             this, [this]() {
