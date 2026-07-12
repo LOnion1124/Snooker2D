@@ -21,6 +21,7 @@ class GameViewModel : public QObject {
     Q_PROPERTY(int player2Score READ player2Score NOTIFY player2ScoreChanged)
     Q_PROPERTY(double cueAngle READ cueAngle NOTIFY cueAngleChanged)
     Q_PROPERTY(double cuePower READ cuePower NOTIFY cuePowerChanged)
+    Q_PROPERTY(bool isPlacingWhiteBall READ isPlacingWhiteBall NOTIFY whiteBallPlacingChanged)
 
 public:
     explicit GameViewModel(QObject* parent = nullptr);
@@ -37,6 +38,7 @@ public:
     int player2Score() const { return m_player2Score; }
     double cueAngle() const { return m_cueAngle; }
     double cuePower() const { return m_cuePower; }
+    bool isPlacingWhiteBall() const { return m_isPlacingWhiteBall; }
 
     // 命令（Q_INVOKABLE 供 QML / 信号绑定使用）
     Q_INVOKABLE void shoot();
@@ -44,6 +46,7 @@ public:
     Q_INVOKABLE void setPower(double power);
     Q_INVOKABLE void confirmFoul();
     Q_INVOKABLE void selectFreeBall(int ballTypeInt);
+    Q_INVOKABLE void confirmWhiteBallPlacement(double x, double y);
 
 signals:
     void ballPositionsChanged();
@@ -56,6 +59,7 @@ signals:
 
     void foulOccurred(const QString& description);
     void gameOver(int winnerPlayer);
+    void whiteBallPlacingChanged();
 
 private slots:
     void onModelPhaseChanged(GamePhase phase);
@@ -65,6 +69,8 @@ private slots:
     void onSimulationTick();
     void onModelFoulOccurred(const struct FoulResult& result);
     void onPlayerScoreChanged(int score);
+    void onModelWhiteBallPlacingStarted();
+    void onModelWhiteBallPlaced();
 
 private:
     void refreshBallPositions();
@@ -82,6 +88,7 @@ private:
     int m_player2Score = 0;
     double m_cueAngle = 0.0;
     double m_cuePower = 50.0;
+    bool m_isPlacingWhiteBall = false;
 };
 
 } // namespace Snooker2D

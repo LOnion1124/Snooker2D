@@ -38,6 +38,11 @@ public:
     const std::vector<std::unique_ptr<Ball>>& balls() const { return m_balls; }
     const Table& table() const { return *m_table; }
 
+    // 白球放置（白球落袋后）
+    bool isWhiteBallPlacing() const { return m_whiteBallPlacing; }
+    bool isValidPlacement(Vector2D pos) const;
+    void placeWhiteBall(Vector2D pos);
+
     // 犯规确认与自由球
     void confirmFoul();
     void selectFreeBall(BallType color);
@@ -49,6 +54,8 @@ signals:
     void simulationFinished();
     void foulOccurred(const struct FoulResult& result);
     void gameOver(Player* winner);
+    void whiteBallPlacingStarted();
+    void whiteBallPlaced();
 
 private:
     void initBalls();
@@ -66,6 +73,8 @@ private:
     BallType m_firstHitBall = BallType::White;
     bool m_anyBallHitCushion = false;
     bool m_whitePocketed = false;
+    bool m_whiteBallPlacing = false;
+    std::vector<bool> m_preShotPocketed; // 击球前各球是否已落袋
 
     // 核心组件
     std::unique_ptr<Table> m_table;

@@ -35,6 +35,10 @@ void GameViewModel::setGameState(GameState* gameState) {
             this, &GameViewModel::onModelSimulationFinished);
     connect(m_gameState, &GameState::foulOccurred,
             this, &GameViewModel::onModelFoulOccurred);
+    connect(m_gameState, &GameState::whiteBallPlacingStarted,
+            this, &GameViewModel::onModelWhiteBallPlacingStarted);
+    connect(m_gameState, &GameState::whiteBallPlaced,
+            this, &GameViewModel::onModelWhiteBallPlaced);
 
     // 连接玩家分数变化
     connect(m_gameState->player1(), &Player::scoreChanged,
@@ -162,6 +166,23 @@ void GameViewModel::onModelFoulOccurred(const FoulResult& result) {
 
 void GameViewModel::onPlayerScoreChanged(int /*score*/) {
     refreshScores();
+}
+
+void GameViewModel::confirmWhiteBallPlacement(double x, double y) {
+    if (m_gameState && m_isPlacingWhiteBall) {
+        m_gameState->placeWhiteBall(Vector2D(x, y));
+    }
+}
+
+void GameViewModel::onModelWhiteBallPlacingStarted() {
+    m_isPlacingWhiteBall = true;
+    emit whiteBallPlacingChanged();
+}
+
+void GameViewModel::onModelWhiteBallPlaced() {
+    m_isPlacingWhiteBall = false;
+    emit whiteBallPlacingChanged();
+    refreshBallPositions();
 }
 
 } // namespace Snooker2D

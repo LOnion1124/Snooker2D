@@ -15,6 +15,10 @@ constexpr int    TOTAL_BALLS = 22;
 // 袋口
 constexpr double POCKET_RADIUS = 16.0;
 
+// D 区（白球落袋后放置区域）
+constexpr double BAULK_LINE_X  = -TABLE_WIDTH * 0.3; // 开球线 X (中心坐标)
+constexpr double D_RADIUS      = TABLE_HEIGHT * 0.35 / 2.0; // D 区半圆半径
+
 // 物理
 constexpr double DELTA_TIME            = 1.0 / 60.0;
 constexpr double FRICTION_COEFFICIENT  = 0.99;

@@ -41,13 +41,6 @@ void GameState::initBalls() {
     const double hw = TABLE_WIDTH / 2.0;   // 400
     const double hh = TABLE_HEIGHT / 2.0;  // 200
 
-    // --- 开球线与 D 区 ---
-    // 开球线距左侧库边 1/5 台长: -400 + 800/5 = -240
-    const double baulkLine = -TABLE_WIDTH * 0.3;
-
-    // D 区半圆半径（约 0.35 × 半台高）
-    const double dRadius = hh * 0.35;
-
     // === 1. 白球 (D 区中央偏左) ===
     auto white = std::make_unique<Ball>(BallType::White);
     white->resetPosition(Vector2D(-TABLE_WIDTH * 0.35, 0.0)); // (-280, 0)
@@ -57,15 +50,15 @@ void GameState::initBalls() {
     // 黄 = 开球线右端, 绿 = 开球线左端, 棕 = 开球线中央
     // 蓝 = 台面中心, 粉 = 3/4 台长处, 黑 = 7/8 台长处
     auto yellow = std::make_unique<Ball>(BallType::Yellow);
-    yellow->resetPosition(Vector2D(baulkLine,  dRadius));
+    yellow->resetPosition(Vector2D(BAULK_LINE_X,  D_RADIUS));
     m_balls.push_back(std::move(yellow));
 
     auto green = std::make_unique<Ball>(BallType::Green);
-    green->resetPosition(Vector2D(baulkLine, -dRadius));
+    green->resetPosition(Vector2D(BAULK_LINE_X, -D_RADIUS));
     m_balls.push_back(std::move(green));
 
     auto brown = std::make_unique<Ball>(BallType::Brown);
-    brown->resetPosition(Vector2D(baulkLine, 0.0));
+    brown->resetPosition(Vector2D(BAULK_LINE_X, 0.0));
     m_balls.push_back(std::move(brown));
 
     auto blue = std::make_unique<Ball>(BallType::Blue);
@@ -99,7 +92,7 @@ void GameState::initBalls() {
 }
 
 void GameState::performShot(double angle, double power) {
-    if (m_simulationRunning || m_phase == GamePhase::GameOver) return;
+    if (m_simulationRunning || m_phase == GamePhase::GameOver || m_whiteBallPlacing) return;
 
     Ball* whiteBall = nullptr;
     for (auto& ball : m_balls) {
@@ -113,6 +106,12 @@ void GameState::performShot(double angle, double power) {
     double rad = angle * 3.14159265358979323846 / 180.0;
     double speed = (power / 100.0) * MAX_SPEED;
     whiteBall->setVelocity(Vector2D(std::cos(rad) * speed, -std::sin(rad) * speed));
+
+    // 快照击球前各球落袋状态
+    m_preShotPocketed.resize(m_balls.size());
+    for (size_t i = 0; i < m_balls.size(); ++i) {
+        m_preShotPocketed[i] = m_balls[i]->isPocketed();
+    }
 
     m_firstHitBall = BallType::White;
     m_anyBallHitCushion = false;
@@ -131,7 +130,15 @@ void GameState::updateSimulation() {
 
     m_physics->step(1.0 / 60.0, ballPtrs, *m_table);
 
-    // TODO: 跟踪首次碰撞、碰库、白球落袋
+    // 跟踪白球是否落袋
+    if (!m_whitePocketed) {
+        for (auto& b : m_balls) {
+            if (b->type() == BallType::White && b->isPocketed()) {
+                m_whitePocketed = true;
+                break;
+            }
+        }
+    }
 
     if (Physics::allBallsStopped(ballPtrs)) {
         m_simulationRunning = false;
@@ -152,11 +159,122 @@ Player* GameState::currentPlayer() const {
 }
 
 void GameState::handlePostShot() {
-    // TODO: 检测犯规、更新比分、决定下一阶段
-    // 临时：直接切换回合
-    if (m_phase != GamePhase::GameOver) {
+    if (m_phase == GamePhase::GameOver) return;
+
+    // 计算本次击球新落袋的非白球
+    int score = 0;
+    bool anyBallPocketed = false;
+    bool redPocketed = false;
+    bool colorPocketed = false;
+
+    for (size_t i = 0; i < m_balls.size(); ++i) {
+        if (i < m_preShotPocketed.size() && m_preShotPocketed[i]) continue; // 之前就已落袋
+        if (!m_balls[i]->isPocketed()) continue;
+
+        anyBallPocketed = true;
+        BallType type = m_balls[i]->type();
+        if (type == BallType::White) continue;
+
+        score += ballValue(type);
+        if (type == BallType::Red) {
+            redPocketed = true;
+        }
+        if (isColorBall(type)) {
+            colorPocketed = true;
+        }
+    }
+
+    // 犯规（白球落袋）→ 对手得分，切换回合，进入白球放置
+    if (m_whitePocketed) {
+        // TODO: 完整犯规判罚复用 Rules 模块
+        PlayerId opponent = oppositePlayer(m_currentPlayerId);
+        Player* opponentPlayer = (opponent == PlayerId::Player1) ? m_player1.get() : m_player2.get();
+        opponentPlayer->addScore(4); // 最低罚 4 分
+        m_phase = GamePhase::Foul;
+        emit phaseChanged(m_phase);
+        switchTurn();
+        m_whiteBallPlacing = true;
+        emit whiteBallPlacingStarted();
+        return;
+    }
+
+    // 进球加分
+    if (score > 0) {
+        currentPlayer()->addScore(score);
+    }
+
+    // 阶段转换
+    if (m_phase == GamePhase::RedBall) {
+        // 红球阶段：进红球 → 下一杆击彩球；进彩球 → 犯规（暂简单切换回合）
+        if (redPocketed) {
+            if (allRedsPocketed()) {
+                // 最后一颗红球已进，永久进入彩球阶段
+                m_phase = GamePhase::ColorBall;
+                emit phaseChanged(m_phase);
+            } else {
+                // 还有红球，下一杆必须击彩球（交替）
+                m_phase = GamePhase::ColorBall;
+                emit phaseChanged(m_phase);
+            }
+        }
+    } else if (m_phase == GamePhase::ColorBall) {
+        // 彩球阶段：进了彩球，若红球还有则回到红球阶段
+        if (colorPocketed && !allRedsPocketed()) {
+            m_phase = GamePhase::RedBall;
+            emit phaseChanged(m_phase);
+        }
+        // 红球清空后一直留在彩球阶段
+    }
+
+    // 无进球 → 切换回合
+    if (score == 0 && !m_whitePocketed) {
         switchTurn();
     }
+
+    checkGameOver();
+}
+
+bool GameState::isValidPlacement(Vector2D pos) const {
+    // D 区判定：x <= 开球线 且 在开球线中点半圆内
+    Vector2D dCenter(BAULK_LINE_X, 0.0);
+    double dx = pos.x - dCenter.x;
+    double dy = pos.y - dCenter.y;
+    if (pos.x > BAULK_LINE_X) return false;
+    if (dx * dx + dy * dy > D_RADIUS * D_RADIUS) return false;
+
+    // 不与任何在台球重叠
+    for (const auto& ball : m_balls) {
+        if (ball->type() == BallType::White) continue;
+        if (!ball->isOnTable()) continue;
+        Vector2D diff = pos - ball->position();
+        double minDist = 2.0 * BALL_RADIUS;
+        if (diff.x * diff.x + diff.y * diff.y < minDist * minDist) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void GameState::placeWhiteBall(Vector2D pos) {
+    if (!m_whiteBallPlacing) return;
+    if (!isValidPlacement(pos)) return;
+
+    for (auto& ball : m_balls) {
+        if (ball->type() != BallType::White) continue;
+        ball->resetPosition(pos);
+        break;
+    }
+
+    m_whiteBallPlacing = false;
+
+    // 恢复适当的击球阶段
+    if (allRedsPocketed() && m_phase != GamePhase::NotStarted) {
+        m_phase = GamePhase::ColorBall;
+    } else {
+        m_phase = GamePhase::RedBall;
+    }
+    emit phaseChanged(m_phase);
+    emit whiteBallPlaced();
 }
 
 void GameState::confirmFoul() {
