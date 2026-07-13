@@ -1,5 +1,5 @@
 #include "GameView.h"
-#include "../viewmodel/GameViewModel.h"
+#include "contracts/GameUiBus.h"
 #include "../common/Constants.h"
 
 #include <QPainter>
@@ -7,7 +7,6 @@
 #include <QMouseEvent>
 #include <QResizeEvent>
 #include <QTimer>
-#include <QVariantMap>
 #include <QWheelEvent>
 #include <QPainterPath>
 
@@ -30,62 +29,49 @@ GameView::GameView(QWidget* parent)
             this, &GameView::updateShotAnimation);
 }
 
-void GameView::setViewModel(GameViewModel* viewModel) {
-    if (m_viewModel) {
-        disconnect(m_viewModel, nullptr, this, nullptr);
+void GameView::bind(GameUiBus* bus) {
+    if (m_bus) {
+        disconnect(m_bus, nullptr, this, nullptr);
     }
-    m_viewModel = viewModel;
-    if (m_viewModel) {
-        connect(m_viewModel, &GameViewModel::ballPositionsChanged,
-                this, &GameView::refresh);
-        connect(m_viewModel, &GameViewModel::cueAngleChanged,
-                this, &GameView::refresh);
-        connect(m_viewModel, &GameViewModel::gamePhaseChanged,
-                this, &GameView::refresh);
-        connect(m_viewModel, &GameViewModel::cuePowerChanged,
-                this, &GameView::refresh);
-        connect(m_viewModel, &GameViewModel::whiteBallPlacingChanged,
-                this, &GameView::refresh);
-        connect(m_viewModel, &GameViewModel::gameRestarted,
+    m_bus = bus;
+    if (m_bus) {
+        // 监听 ViewModel → View 状态推送
+        connect(m_bus, &GameUiBus::tableStateChanged,
+                this, &GameView::applyTableState);
+        connect(m_bus, &GameUiBus::shotAnimationCancelled,
                 this, &GameView::cancelShotAnimation);
-        refresh();
+
+        // 动画完成信号转发到 Bus
+        connect(this, &GameView::shotAnimationFinished,
+                m_bus, &GameUiBus::shotAnimationFinished);
     }
 }
 
-void GameView::refresh() {
-    if (m_viewModel) {
-        m_cachedBallPositions = m_viewModel->ballPositions();
-        m_cachedCueAngle = m_viewModel->cueAngle();
-        m_cachedCuePower = m_viewModel->cuePower();
-        m_cachedGamePhase = m_viewModel->gamePhase();
-        m_cachedIsPlacingWhiteBall = m_viewModel->isPlacingWhiteBall();
+void GameView::applyTableState(const TableViewState& state) {
+    m_cachedBalls = state.balls;
+    m_cachedCueAngle = state.cueAngle;
+    m_cachedCuePower = state.cuePower;
+    m_cachedCanAim = state.canAim;
+    m_cachedCanShoot = state.canShoot;
+    m_cachedIsPlacingWhiteBall = state.isPlacingWhiteBall;
+    m_cachedIsSimulating = state.isSimulating;
+    m_centeredCoordinates = state.centeredCoordinates;
 
-        const bool playablePhase = !m_cachedGamePhase.isEmpty()
-            && m_cachedGamePhase != QStringLiteral("未开始")
-            && m_cachedGamePhase != QStringLiteral("比赛结束")
-            && !m_cachedGamePhase.contains(QStringLiteral("模拟中"));
-        if (playablePhase && !m_cachedIsPlacingWhiteBall && !m_isShotAnimating) {
-            m_hideAimingTools = false;
-            m_shotAnimationGap = cueGap();
-        }
-
-        // 统一检测坐标系：所有球中有任何球出现负坐标或超出 [0, TABLE_*] 即为中心坐标系
-        m_centeredCoordinates = false;
-        for (const QVariant& item : m_cachedBallPositions) {
-            const QVariantMap ballData = item.toMap();
-            const double x = ballData.value("x").toDouble();
-            const double y = ballData.value("y").toDouble();
-            if (x < 0.0 || y < 0.0 || x > TABLE_WIDTH || y > TABLE_HEIGHT) {
-                m_centeredCoordinates = true;
-                break;
-            }
-        }
+    // 动画状态下不覆盖瞄准工具可见性
+    if (!m_isShotAnimating && !m_hideAimingTools) {
+        m_shotAnimationGap = cueGap();
     }
+
     update(); // 触发 repaint
 }
 
+void GameView::refresh() {
+    // refresh 由外部调用（如 resize），仅触发重绘
+    update();
+}
+
 void GameView::playShotAnimation() {
-    if (!m_viewModel || m_isShotAnimating || !aimingToolsVisible()) {
+    if (!m_bus || m_isShotAnimating || !aimingToolsVisible()) {
         return;
     }
 
@@ -163,7 +149,7 @@ void GameView::mouseMoveEvent(QMouseEvent* event) {
 }
 
 void GameView::wheelEvent(QWheelEvent* event) {
-    if (!m_viewModel || m_isShotAnimating || !aimingToolsVisible()) {
+    if (!m_bus || m_isShotAnimating || !aimingToolsVisible()) {
         QWidget::wheelEvent(event);
         return;
     }
@@ -174,7 +160,8 @@ void GameView::wheelEvent(QWheelEvent* event) {
         return;
     }
 
-    m_viewModel->setPower(m_cachedCuePower - wheelSteps * 5.0);
+    const double newPower = m_cachedCuePower - wheelSteps * 5.0;
+    emit m_bus->cuePowerRequested(newPower);
     event->accept();
 }
 
@@ -271,20 +258,16 @@ void GameView::drawBalls(QPainter& painter) {
     painter.save();
     painter.setRenderHint(QPainter::Antialiasing, true);
 
-    for (const QVariant& item : m_cachedBallPositions) {
-        const QVariantMap ballData = item.toMap();
-        if (!ballData.value("onTable").toBool()) {
+    for (const BallViewState& ball : m_cachedBalls) {
+        if (!ball.onTable) {
             continue;
         }
 
-        const double x = ballData.value("x").toDouble();
-        const double y = ballData.value("y").toDouble();
-        const int type = ballData.value("type").toInt();
-        const QPointF center = gameToPixel(x, y);
-        const QColor fillColor = ballColor(type);
-        const QColor penColor = type == 0 ? QColor(130, 130, 130)
-                                          : (type == 7 ? QColor(240, 240, 240)
-                                                       : fillColor.darker(140));
+        const QPointF center = gameToPixel(ball.x, ball.y);
+        const QColor fillColor = ballColor(ball.type);
+        const QColor penColor = ball.type == 0 ? QColor(130, 130, 130)
+                                              : (ball.type == 7 ? QColor(240, 240, 240)
+                                                               : fillColor.darker(140));
 
         painter.setPen(QPen(penColor, 1.5));
         painter.setBrush(fillColor);
@@ -408,11 +391,9 @@ bool GameView::cueBallPixelPosition(QPointF* position) const {
         return false;
     }
 
-    for (const QVariant& item : m_cachedBallPositions) {
-        const QVariantMap ballData = item.toMap();
-        if (ballData.value("type").toInt() == 0 && ballData.value("onTable").toBool()) {
-            *position = gameToPixel(ballData.value("x").toDouble(),
-                                    ballData.value("y").toDouble());
+    for (const BallViewState& ball : m_cachedBalls) {
+        if (ball.type == 0 && ball.onTable) {
+            *position = gameToPixel(ball.x, ball.y);
             return true;
         }
     }
@@ -429,11 +410,9 @@ bool GameView::aimingToolsVisible() const {
         return m_isShotAnimating;
     }
 
-    return !m_cachedBallPositions.isEmpty()
+    return !m_cachedBalls.isEmpty()
         && !m_tableRect.isEmpty()
-        && m_cachedGamePhase != QStringLiteral("未开始")
-        && m_cachedGamePhase != QStringLiteral("比赛结束")
-        && !m_cachedGamePhase.contains(QStringLiteral("模拟中"));
+        && m_cachedCanAim;
 }
 
 bool GameView::isInWhiteBallPlacementZone(const QPointF& gamePosition) const {
@@ -444,7 +423,7 @@ bool GameView::isInWhiteBallPlacementZone(const QPointF& gamePosition) const {
 }
 
 void GameView::tryPlaceWhiteBall(const QPointF& mousePosition) {
-    if (!m_viewModel || m_tableRect.isEmpty() || !m_tableRect.contains(mousePosition)) {
+    if (!m_bus || m_tableRect.isEmpty() || !m_tableRect.contains(mousePosition)) {
         return;
     }
 
@@ -453,7 +432,7 @@ void GameView::tryPlaceWhiteBall(const QPointF& mousePosition) {
         return;
     }
 
-    m_viewModel->confirmWhiteBallPlacement(gamePosition.x(), gamePosition.y());
+    emit m_bus->whiteBallPlacementRequested(gamePosition.x(), gamePosition.y());
 }
 
 double GameView::cueGap() const {
@@ -462,7 +441,7 @@ double GameView::cueGap() const {
 }
 
 void GameView::updateCueAngleFromMouse(const QPointF& mousePosition) {
-    if (!m_viewModel) {
+    if (!m_bus) {
         return;
     }
 
@@ -482,7 +461,7 @@ void GameView::updateCueAngleFromMouse(const QPointF& mousePosition) {
         angle += 360.0;
     }
 
-    m_viewModel->setAngle(angle);
+    emit m_bus->cueAngleRequested(angle);
 }
 
 void GameView::cancelShotAnimation() {

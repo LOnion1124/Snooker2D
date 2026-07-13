@@ -1,5 +1,7 @@
 #include "GameInfoPanel.h"
-#include "../viewmodel/GameViewModel.h"
+#include "contracts/GameUiBus.h"
+#include "contracts/GameViewState.h"
+#include "../common/Types.h"
 
 #include <QLabel>
 #include <QPushButton>
@@ -14,38 +16,38 @@ GameInfoPanel::GameInfoPanel(QWidget* parent)
     setupUI();
 }
 
-void GameInfoPanel::setViewModel(GameViewModel* viewModel) {
-    if (m_viewModel) {
-        disconnect(m_viewModel, nullptr, this, nullptr);
-    }
-
-    m_viewModel = viewModel;
-    if (!m_viewModel) {
-        updateWhiteBallPlacementHint();
-        updateMessage(QString());
+void GameInfoPanel::bind(GameUiBus* bus) {
+    m_bus = bus;
+    if (!m_bus) {
+        applyGameInfoState(GameInfoViewState{});
         return;
     }
 
-    connect(m_viewModel, &GameViewModel::currentPlayerChanged,
-            this, &GameInfoPanel::updateCurrentPlayer);
-    connect(m_viewModel, &GameViewModel::gamePhaseChanged,
-            this, &GameInfoPanel::updatePhase);
-    connect(m_viewModel, &GameViewModel::whiteBallPlacingChanged,
-            this, &GameInfoPanel::updateWhiteBallPlacementHint);
-    connect(m_viewModel, &GameViewModel::gameRestarted,
-            this, [this]() {
-        updateMessage(QString());
-    });
-    connect(m_viewModel, &GameViewModel::foulOccurred,
-            this, &GameInfoPanel::updateMessage);
-    connect(m_viewModel, &GameViewModel::gameOver,
-            this, [this](int winner) {
-        updateMessage(QStringLiteral("玩家 %1 获胜！").arg(winner));
-    });
+    // 监听 ViewModel → View 状态推送
+    connect(m_bus, &GameUiBus::gameInfoStateChanged,
+            this, &GameInfoPanel::applyGameInfoState);
+}
 
-    updateCurrentPlayer();
-    updatePhase();
-    updateWhiteBallPlacementHint();
+void GameInfoPanel::applyGameInfoState(const GameInfoViewState& state) {
+    // 当前玩家
+    m_playerIndicator->setText(state.currentPlayer > 0
+        ? QStringLiteral("当前玩家: %1").arg(state.currentPlayer)
+        : QStringLiteral("当前玩家: --"));
+
+    // 阶段文本
+    const bool phaseEmpty = state.phaseText.isEmpty();
+    m_phaseLabel->setText(phaseEmpty
+        ? QStringLiteral("阶段: --")
+        : QStringLiteral("阶段: %1").arg(state.phaseText));
+    m_phaseLabel->setStyleSheet(phaseStyleSheet(state.phaseKind));
+
+    // 消息
+    m_messageLabel->setText(state.message);
+
+    // 白球放置提示
+    if (m_placementHintLabel) {
+        m_placementHintLabel->setVisible(state.showWhiteBallPlacementHint);
+    }
 }
 
 void GameInfoPanel::setupUI() {
@@ -103,8 +105,13 @@ void GameInfoPanel::setupUI() {
         "QPushButton:hover { background-color: #4f9a73; }"
         "QPushButton:pressed { background-color: #34694f; }"
     ));
+    // restart button 发 bus 请求信号
     connect(m_restartButton, &QPushButton::clicked,
-            this, &GameInfoPanel::restartGame);
+            this, [this]() {
+        if (m_bus) {
+            emit m_bus->restartRequested();
+        }
+    });
 
     layout->addWidget(m_playerIndicator);
     layout->addWidget(m_phaseLabel);
@@ -115,59 +122,21 @@ void GameInfoPanel::setupUI() {
     layout->addStretch();
 }
 
-void GameInfoPanel::updateCurrentPlayer() {
-    const int playerNumber = m_viewModel ? m_viewModel->currentPlayer() : 0;
-    m_playerIndicator->setText(playerNumber > 0
-                                   ? QStringLiteral("当前玩家: %1").arg(playerNumber)
-                                   : QStringLiteral("当前玩家: --"));
-}
-
-void GameInfoPanel::updatePhase() {
-    const QString phaseText = m_viewModel ? m_viewModel->gamePhase() : QString();
-    m_phaseLabel->setText(phaseText.isEmpty()
-                              ? QStringLiteral("阶段: --")
-                              : QStringLiteral("阶段: %1").arg(phaseText));
-    m_phaseLabel->setStyleSheet(phaseStyleSheet(phaseText));
-}
-
-void GameInfoPanel::updateMessage(const QString& message) {
-    m_messageLabel->setText(message);
-}
-
-void GameInfoPanel::updateWhiteBallPlacementHint() {
-    if (!m_placementHintLabel) {
-        return;
+QString GameInfoPanel::phaseStyleSheet(int phaseKind) const {
+    switch (static_cast<GamePhase>(phaseKind)) {
+        case GamePhase::RedBall:
+            return QStringLiteral("color: #dc143c;");
+        case GamePhase::ColorBall:
+            return QStringLiteral("color: #4169e1;");
+        case GamePhase::Foul:
+            return QStringLiteral("color: #dc143c; font-weight: bold;");
+        case GamePhase::FreeBall:
+            return QStringLiteral("color: #ff9800;");
+        case GamePhase::GameOver:
+            return QStringLiteral("color: #d4af37; font-weight: bold;");
+        default:
+            return QString();
     }
-
-    const bool isPlacingWhiteBall = m_viewModel && m_viewModel->isPlacingWhiteBall();
-    m_placementHintLabel->setVisible(isPlacingWhiteBall);
-}
-
-void GameInfoPanel::restartGame() {
-    if (!m_viewModel) {
-        return;
-    }
-
-    m_viewModel->restartGame();
-}
-
-QString GameInfoPanel::phaseStyleSheet(const QString& phaseText) const {
-    if (phaseText.startsWith(QStringLiteral("请击红球"))) {
-        return QStringLiteral("color: #dc143c;");
-    }
-    if (phaseText.startsWith(QStringLiteral("请击彩球"))) {
-        return QStringLiteral("color: #4169e1;");
-    }
-    if (phaseText.startsWith(QStringLiteral("犯规"))) {
-        return QStringLiteral("color: #dc143c; font-weight: bold;");
-    }
-    if (phaseText.startsWith(QStringLiteral("自由球"))) {
-        return QStringLiteral("color: #ff9800;");
-    }
-    if (phaseText.startsWith(QStringLiteral("比赛结束"))) {
-        return QStringLiteral("color: #d4af37; font-weight: bold;");
-    }
-    return QString();
 }
 
 } // namespace Snooker2D

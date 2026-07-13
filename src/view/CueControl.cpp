@@ -1,5 +1,6 @@
 #include "CueControl.h"
-#include "../viewmodel/CueControlViewModel.h"
+#include "contracts/GameUiBus.h"
+#include "contracts/GameViewState.h"
 
 #include <QSlider>
 #include <QLabel>
@@ -14,23 +15,25 @@ CueControl::CueControl(QWidget* parent)
     setupUI();
 }
 
-void CueControl::setViewModel(CueControlViewModel* viewModel) {
-    m_viewModel = viewModel;
-    if (!m_viewModel) return;
+void CueControl::bind(GameUiBus* bus) {
+    m_bus = bus;
+    if (!m_bus) return;
 
-    // 绑定 ViewModel 属性 → 控件
-    connect(m_viewModel, &CueControlViewModel::angleChanged, this, [this](double angle) {
-        m_angleSlider->blockSignals(true);
-        m_angleSlider->setValue(static_cast<int>(angle));
-        m_angleSlider->blockSignals(false);
-        m_angleLabel->setText(QString("角度: %1°").arg(angle, 0, 'f', 1));
-    });
-    connect(m_viewModel, &CueControlViewModel::powerChanged, this, [this](double power) {
-        m_powerSlider->blockSignals(true);
-        m_powerSlider->setValue(static_cast<int>(power));
-        m_powerSlider->blockSignals(false);
-        m_powerLabel->setText(QString("力度: %1%").arg(power, 0, 'f', 1));
-    });
+    // 监听 ViewModel → View 状态推送
+    connect(m_bus, &GameUiBus::cueStateChanged,
+            this, &CueControl::applyCueState);
+}
+
+void CueControl::applyCueState(const CueViewState& state) {
+    m_angleSlider->blockSignals(true);
+    m_angleSlider->setValue(static_cast<int>(state.angle));
+    m_angleSlider->blockSignals(false);
+    m_angleLabel->setText(QString("角度: %1°").arg(state.angle, 0, 'f', 1));
+
+    m_powerSlider->blockSignals(true);
+    m_powerSlider->setValue(static_cast<int>(state.power));
+    m_powerSlider->blockSignals(false);
+    m_powerLabel->setText(QString("力度: %1%").arg(state.power, 0, 'f', 1));
 }
 
 void CueControl::setupUI() {

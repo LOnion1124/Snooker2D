@@ -8,7 +8,7 @@ class QLabel;
 
 namespace Snooker2D {
 
-class CueControlViewModel;
+class GameUiBus;
 
 class CueControl : public QWidget {
     Q_OBJECT
@@ -17,12 +17,13 @@ public:
     explicit CueControl(QWidget* parent = nullptr);
     ~CueControl() override = default;
 
-    void setViewModel(CueControlViewModel* viewModel);
+    void bind(GameUiBus* bus);
 
 private:
     void setupUI();
+    void applyCueState(const struct CueViewState& state);
 
-    CueControlViewModel* m_viewModel = nullptr;
+    GameUiBus* m_bus = nullptr;
 
     QSlider* m_angleSlider = nullptr;
     QSlider* m_powerSlider = nullptr;

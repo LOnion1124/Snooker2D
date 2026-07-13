@@ -6,10 +6,8 @@
 namespace Snooker2D {
 
 // Forward declarations
-class GameState;
-class GameViewModel;
-class CueControlViewModel;
-class ScoreViewModel;
+class GameUiBus;
+class GameSessionViewModel;
 class GameView;
 class CueControl;
 class ScoreBoard;
@@ -24,16 +22,13 @@ public:
 
 private:
     void setupUI();
-    void setupBindings();
     void initGame();
 
-    // Model
-    GameState* m_gameState = nullptr;
+    // 通信总线（契约层）
+    GameUiBus* m_uiBus = nullptr;
 
-    // ViewModel
-    GameViewModel* m_gameViewModel = nullptr;
-    CueControlViewModel* m_cueViewModel = nullptr;
-    ScoreViewModel* m_scoreViewModel = nullptr;
+    // ViewModel 协调器
+    GameSessionViewModel* m_sessionViewModel = nullptr;
 
     // View
     GameView* m_gameView = nullptr;

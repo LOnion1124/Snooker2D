@@ -7,7 +7,7 @@ class QLabel;
 
 namespace Snooker2D {
 
-class ScoreViewModel;
+class GameUiBus;
 
 class ScoreBoard : public QWidget {
     Q_OBJECT
@@ -16,15 +16,13 @@ public:
     explicit ScoreBoard(QWidget* parent = nullptr);
     ~ScoreBoard() override = default;
 
-    void setViewModel(ScoreViewModel* viewModel);
-
-private slots:
-    void refresh();
+    void bind(GameUiBus* bus);
 
 private:
     void setupUI();
+    void applyScoreState(const struct ScoreViewState& state);
 
-    ScoreViewModel* m_viewModel = nullptr;
+    GameUiBus* m_bus = nullptr;
 
     QLabel* m_titleLabel = nullptr;
     QLabel* m_player1NameLabel = nullptr;

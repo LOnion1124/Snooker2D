@@ -9,7 +9,7 @@ class QPushButton;
 
 namespace Snooker2D {
 
-class GameViewModel;
+class GameUiBus;
 
 class GameInfoPanel : public QWidget {
     Q_OBJECT
@@ -18,18 +18,14 @@ public:
     explicit GameInfoPanel(QWidget* parent = nullptr);
     ~GameInfoPanel() override = default;
 
-    void setViewModel(GameViewModel* viewModel);
+    void bind(GameUiBus* bus);
 
 private:
     void setupUI();
-    void updateCurrentPlayer();
-    void updatePhase();
-    void updateMessage(const QString& message);
-    void updateWhiteBallPlacementHint();
-    void restartGame();
-    QString phaseStyleSheet(const QString& phaseText) const;
+    void applyGameInfoState(const struct GameInfoViewState& state);
+    QString phaseStyleSheet(int phaseKind) const;
 
-    GameViewModel* m_viewModel = nullptr;
+    GameUiBus* m_bus = nullptr;
 
     QLabel* m_playerIndicator = nullptr;
     QLabel* m_phaseLabel = nullptr;

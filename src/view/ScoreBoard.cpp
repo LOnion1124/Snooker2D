@@ -1,5 +1,6 @@
 #include "ScoreBoard.h"
-#include "../viewmodel/ScoreViewModel.h"
+#include "contracts/GameUiBus.h"
+#include "contracts/GameViewState.h"
 
 #include <QLabel>
 #include <QVBoxLayout>
@@ -13,20 +14,22 @@ ScoreBoard::ScoreBoard(QWidget* parent)
     setupUI();
 }
 
-void ScoreBoard::setViewModel(ScoreViewModel* viewModel) {
-    m_viewModel = viewModel;
-    if (!m_viewModel) return;
+void ScoreBoard::bind(GameUiBus* bus) {
+    m_bus = bus;
+    if (!m_bus) return;
 
-    connect(m_viewModel, &ScoreViewModel::player1ScoreChanged,
-            this, &ScoreBoard::refresh);
-    connect(m_viewModel, &ScoreViewModel::player2ScoreChanged,
-            this, &ScoreBoard::refresh);
-    connect(m_viewModel, &ScoreViewModel::foulMessageChanged,
-            this, &ScoreBoard::refresh);
-    connect(m_viewModel, &ScoreViewModel::statusMessageChanged,
-            this, &ScoreBoard::refresh);
+    // 监听 ViewModel → View 状态推送
+    connect(m_bus, &GameUiBus::scoreStateChanged,
+            this, &ScoreBoard::applyScoreState);
+}
 
-    refresh();
+void ScoreBoard::applyScoreState(const ScoreViewState& state) {
+    m_player1ScoreLabel->setText(QString::number(state.player1Score));
+    m_player2ScoreLabel->setText(QString::number(state.player2Score));
+    m_player1BreakLabel->setText(QString("单杆: %1").arg(state.player1Break));
+    m_player2BreakLabel->setText(QString("单杆: %1").arg(state.player2Break));
+    m_foulLabel->setText(state.foulMessage);
+    m_statusLabel->setText(state.statusMessage);
 }
 
 void ScoreBoard::setupUI() {
@@ -72,17 +75,6 @@ void ScoreBoard::setupUI() {
     layout->addWidget(m_foulLabel);
     layout->addWidget(m_statusLabel);
     layout->addStretch();
-}
-
-void ScoreBoard::refresh() {
-    if (!m_viewModel) return;
-
-    m_player1ScoreLabel->setText(QString::number(m_viewModel->player1Score()));
-    m_player2ScoreLabel->setText(QString::number(m_viewModel->player2Score()));
-    m_player1BreakLabel->setText(QString("单杆: %1").arg(m_viewModel->player1Break()));
-    m_player2BreakLabel->setText(QString("单杆: %1").arg(m_viewModel->player2Break()));
-    m_foulLabel->setText(m_viewModel->foulMessage());
-    m_statusLabel->setText(m_viewModel->statusMessage());
 }
 
 } // namespace Snooker2D
