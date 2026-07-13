@@ -38,6 +38,9 @@ void Physics::step(double deltaTime, std::vector<Ball*>& balls, const Table& tab
         if (ball->isPocketed()) continue;
         applyHardConstraint(*ball, hw, hh, margin);
     }
+
+    // 7. 把出界无动量的球直接回拉
+    checkPullBackBalls(balls, table);
 }
 
 bool Physics::allBallsStopped(const std::vector<Ball*>& balls) {
@@ -207,6 +210,47 @@ void Physics::applyHardConstraint(Ball& ball, double halfW, double halfH, double
     if (clamped) {
         ball.setPosition(pos);
         ball.setVelocity(vel);
+    }
+}
+
+void Physics::checkPullBackBalls(std::vector<Ball*>& balls, const Table& table) {
+    double halfW = table.width() / 2.0;
+    double halfH = table.height() / 2.0;
+    double limitX = halfW - BALL_RADIUS;
+    double limitY = halfH - BALL_RADIUS;
+    double speedThreshold = MIN_VELOCITY * 2.0;
+
+    for (auto* ball : balls) {
+        if (ball->isPocketed()) continue;
+        if (ball->velocity().length() > speedThreshold) continue;
+
+        Vector2D pos = ball->position();
+        Vector2D vel = ball->velocity();
+        bool clamped = false;
+
+        if (pos.x > limitX) {
+            pos.x = limitX;
+            if (vel.x > 0.0) vel.x = 0.0;
+            clamped = true;
+        } else if (pos.x < -limitX) {
+            pos.x = -limitX;
+            if (vel.x < 0.0) vel.x = 0.0;
+            clamped = true;
+        }
+        if (pos.y > limitY) {
+            pos.y = limitY;
+            if (vel.y > 0.0) vel.y = 0.0;
+            clamped = true;
+        } else if (pos.y < -limitY) {
+            pos.y = -limitY;
+            if (vel.y < 0.0) vel.y = 0.0;
+            clamped = true;
+        }
+
+        if (clamped) {
+            ball->setPosition(pos);
+            ball->setVelocity(vel);
+        }
     }
 }
 

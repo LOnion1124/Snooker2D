@@ -36,6 +36,7 @@ private:
 
     // 硬边界约束 — 防止链式推出导致球越界
     static void applyHardConstraint(Ball& ball, double halfW, double halfH, double margin);
+    static void checkPullBackBalls(std::vector<Ball*>& balls, const Table& table);
 };
 
 } // namespace Snooker2D
