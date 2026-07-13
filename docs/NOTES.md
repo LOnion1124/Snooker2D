@@ -42,3 +42,6 @@
 | 07-13 | GameInfoPanel 改为 setViewModel 绑定 | MainWindow 减少 4 条转发连接 |
 | 07-13 | 新增 GameVM::gameRestarted 信号，重启清空提示 | ScoreVM 状态重置 |
 | 07-13 | Constants.h 新增 BAULK_LINE_X / D_RADIUS | D 区放置功能 |
+| 07-13 | 新增 test_mathutils target + 60 条单元测试 | 验证 Common 层无回归 |
+| 07-13 | 文档分 4 批提交（common/app/架构/报告） | C 的提交数 3→8 |
+| 07-13 | 中期报告更新（含测试内容），.gitignore 加 LaTeX 产物 | 报告反映最新进度 |
