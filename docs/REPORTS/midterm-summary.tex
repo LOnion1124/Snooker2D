@@ -77,7 +77,7 @@ View & A & 75\% & 球桌渲染、鼠标交互、瞄准线、杆动画 \\
 \hline
 LOnion1124（A） & 14 & View + 部分 App \\
 Ironhammer Std（B） & 5 & Model / ViewModel \\
-Ventub（C） & 3 & Common / App \\
+Ventub（C） & 9 & Common / App \\
 \hline
 \end{tabular}
 \end{center}
@@ -99,15 +99,77 @@ Ventub（C） & 3 & Common / App \\
 \item 比赛重启
 \end{itemize}
 
-\section{后续计划}
+\section{技术难点的克服}
 
-\begin{enumerate}[leftmargin=*]
-\item 完善斯诺克规则引擎（犯规判定、罚分、自由球、输赢判定）
-\item 补充 Common/Model 层单元测试
-\item 端到端集成测试（完整对局）
-\item CI/CD 配置
-\item UI 美化与资源整理
-\item 文档完善
-\end{enumerate}
+\subsection{vcpkg 与 MinGW 的兼容性问题（C）}
+
+项目初始配置时，vcpkg 的 MinGW triplet（x64-mingw-dynamic）无法找到预编译的 Qt 6 二进制包，触发从源码编译 Qt 的流程，预计耗时数小时。经排查，vcpkg 内部使用独立的 MinGW 工具链查找机制（通过 find\_program 搜索 x86\_64-w64-mingw32-gcc），与 MinGW-Builds 独立包的命名约定不完全匹配。
+
+\textbf{解决方案}：放弃 vcpkg 管理 Qt，改用 aqtinstall 直接下载 Qt 官方预编译的 MinGW 版本（6.10.3）。CMake 通过 CMAKE\_PREFIX\_PATH 以 find\_package 方式解析 Qt，绕过 vcpkg 的 toolchain 机制。同时创建编译器别名文件（x86\_64-w64-mingw32-gcc.exe），确保 vcpkg 的工具链查找机制可正常工作。
+
+\subsection{物理引擎参数调优（B / C）}
+
+物理引擎需要三个关键参数：球-球碰撞恢复系数、库边反弹系数和摩擦力系数。初始值（0.96 / 无 / 0.98）与实际台球运动偏差较大——球碰撞后过于活跃，贴库球会沿库边高速滑动。经过多轮测试调整，最终确定为 0.88 / 0.77 / 0.99。期间 B 直接修改了 Common 层的 Constants.h 进行迭代，C 在后续整理中接受了这些参数变更。
+
+\subsection{击球流程重构（A / C）}
+
+初始设计为按钮触发击球（CueControl 点击→shootRequested→GameVM::shoot），但 A 在实现鼠标交互后，击球流程变更为：GameView 鼠标按下→球杆动画→鼠标松开→shotAnimationFinished→GameVM::shoot。这一变更导致 MainWindow 的信号连接需要重写（击球触发源从 CueControlVM 变为 GameView），同时角度/力度的同步从单向变为双向（鼠标在球桌上拖动和控件滑块需互相同步）。A 和 C 通过 Git 提交先后完成了 App 层的适配。
+
+\section{团队协作情况}
+
+团队成员通过 Git 进行代码协作，采用 feature-branch 与 main 分支合并的工作流。截止中期检查，远程仓库共 22 条提交记录，三位成员均有持续有效的提交。
+
+\textbf{协作亮点}：
+\begin{itemize}
+\item 接口约定执行良好：MVVM 层间通过 TASK\_ALLOCATION.md 第 5 节的接口约定进行协作，Model 层的信号签名变更通过 Git 历史可追踪，未出现编译失败级别的接口不匹配
+\item 跨层协调高效：A 的击球流程重构涉及 View/App 两层，B 的物理参数调优涉及 Common/Model 两层，均通过直接提交或后续适配的方式完成协调
+\item 独立开发与集成顺畅：三位开发者按层分工，5 天内完成五层架构落地、物理引擎和鼠标交互
+\end{itemize}
+
+\textbf{可改进之处}：
+\begin{itemize}
+\item Common 层的变更缺乏提前沟通：B 在修改 Constants.h 和 MathUtils 时未与 C 协商，虽然功能合理但不符合分工约定
+\item 提交粒度不均：A 有 14 条提交而 B 仅 5 条，B 的某些提交（如“球能动了”）包含了较多功能
+\item 缺少每日站会记录：虽然有 TASK\_ALLOCATION.md 建议的站会议程，但未在仓库中留下书面记录
+\end{itemize}
+
+\section{阶段性成果展示}
+
+\begin{center}
+\textbf{[截图 1：游戏主窗口]}
+\vspace{1cm}
+
+（此处插入游戏运行截图——包含球桌、22 颗球、瞄准线、球杆、力度/角度控件、计分板、信息面板）
+
+\vspace{2cm}
+
+\textbf{[截图 2：物理碰撞效果]}
+
+\vspace{1cm}
+
+（此处插入击球后球运动的截图——展示碰撞和落袋效果）
+
+\vspace{2cm}
+
+\textbf{[截图 3：D 区白球复位]}
+
+\vspace{1cm}
+
+（此处插入白球落袋后 D 区放置的截图）
+\end{center}
+
+\section{总体心得}
+
+五天的开发过程中，团队对 MVVM 架构的理解从课堂理论走向了工程实践。将程序拆分为五层的最大收益在于：三位开发者可以真正独立地并行工作，View 层在 Model 层尚未完整时即可通过 ViewModel 的骨架属性进行 UI 开发。但分层也带来了成本——跨层信号连接的维护、接口变更时的多方协调，都需要额外的时间投入。
+
+从技术选型角度看，Qt 6 的信号/槽机制天然适配 MVVM 的数据绑定需求，Q\_PROPERTY + NOTIFY 信号组合可以简洁地实现 ViewModel 到 View 的属性推送。物理引擎方面，固定时间步长（1/60s）的设计保证了模拟的确定性，避免了帧率波动对碰撞检测精度的影响。
+
+后续阶段的重点在于规则引擎的完善和测试覆盖——当前物理表现已经可用，但斯诺克复杂的规则体系（自由球、罚分、彩球复位等）是最具挑战性的部分。
+
+\section{智能体的使用}
+
+本项目选择\textbf{以人为主的开发模式}。大模型智能体在开发中仅用于补充性工作：代码补全与格式化、文档草稿生成、构建配置调试建议。所有核心架构设计（五层 MVVM 拆分方案）、接口协调（层间信号约定）、技术决策（vcpkg 取舍、物理参数选择）均由团队成员自主完成。
+
+使用效果方面，智能体在重复性任务（如测试用例编写、文档格式化）上节省了时间，但对跨层逻辑的理解仍存在局限——MainWindow 的信号连接需要人工精确指定 lambda 中的属性同步逻辑，智能体难以自行推断完整的依赖关系。
 
 \end{document}

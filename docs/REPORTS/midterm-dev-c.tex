@@ -169,6 +169,30 @@ e8002bb & MathUtils 单元测试（60 条断言） \\
 \item 单元测试无框架依赖，通过 CMake target 编译运行，为后续 CTest 集成预留接口
 \end{itemize}
 
+\section{遇到的技术难点}
+
+\subsection{vcpkg MinGW triplet 兼容性}
+
+vcpkg 的默认 triplet（x64-windows）依赖 Visual Studio，而项目使用 MinGW 编译。切换到 x64-mingw-dynamic triplet 后，vcpkg 内部的 mingw.cmake 工具链通过 find\_program 搜索名为 x86\_64-w64-mingw32-gcc 的编译器，而 MinGW-Builds 独立包的编译器命名为 gcc.exe/g++.exe。这导致 vcpkg 的编译器检测失败，进而触发从源码编译 Qt（预计耗时数小时）。
+
+解决方案分两步：首先创建编译器别名（将 gcc.exe 复制为 x86\_64-w64-mingw32-gcc.exe）；其次在项目自定义 triplet 中设置 VCPKG\_DETECTED\_CMAKE\_C\_COMPILER 和 VCPKG\_DETECTED\_CMAKE\_CXX\_COMPILER 显式指定编译器路径。最终方案为完全绕过 vcpkg 管理 Qt，改用 aqtinstall 直接下载 Qt 官方预编译的 MinGW 版本。
+
+\subsection{MainWindow 信号连接的两次重构}
+
+初始设计的信号连接方案在 A 完成鼠标交互后被推翻——击球触发源从 CueControlVM::shootRequested 变为 GameView::shotAnimationFinished，角度/力度同步从单向（控件→GameVM）变为双向（控件↔GameVM 互相更新）。每次重构都需要在 App 层精确调整 connect 的 lambda 逻辑，保证信号在正确的时刻以正确的方向传递。第二次重构中，角度/力度的双向同步引入了一个微妙的循环问题：GameVM::cueAngleChanged → CueControlVM::setAngle → CueControlVM::angleChanged → GameVM::setAngle。通过 Qt 的信号阻断机制（如果新值与当前值相同则不发射信号）自动避免了无限循环。
+
+\subsection{Common 层设计边界的界定}
+
+FoulResult 结构体应放在 Common 层还是 Model 层是一个典型的设计决策：它被 ViewModel 和 Model 同时使用（符合 Common 的“共享”特征），但其成员 QString description 依赖 Qt（违反 Common“纯 C++”约束）。最终选择放在 Model 层 Rules.h，ViewModel 通过前置声明引用。类似地，袋口坐标（Pocket 结构体）放在 Model 层 Table.h 而非 Constants.h——因其是球桌几何的一部分，由 Table 类统一管理比散落在常量文件中更合理。
+
+\section{个人心得与感悟}
+
+作为 Common 层和 App 层的负责人，我承担了“基础设施提供者”和“总装工人”的双重角色。Common 层要求对需求的预判——Vector2D 的复合赋值运算符在一开始看似多余，但当 B 的物理引擎要求就地更新速度向量时，它们的价值立刻体现。App 层则要求对所有层接口的全局理解——MainWindow 的每一条 connect 都意味着理解一个信号的来源和去向。
+
+与 B 的协作让我认识到，分层架构中的“灰色地带”需要灵活处理。B 在物理调优时直接修改了 Constants.h，严格来说这是 Common 层的文件，但为了迭代效率我选择了接受而非回退。好的架构不应成为开发的障碍——当效率与规范冲突时，适度妥协比僵化执行更有利于项目推进。
+
+60 条单元测试的编写过程也是对自己代码的审视。circleOverlap 的相切边界情况（严格 < vs <=）在写测试时才被发现——这种细节在功能开发时很容易被忽略，但测试能系统地暴露它们。后续阶段我会推动 CTest 集成，将测试自动化纳入构建流程。
+
 \section{待完成}
 
 \begin{itemize}
