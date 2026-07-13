@@ -126,3 +126,14 @@ target_link_libraries(Snooker2D PRIVATE
     snooker_common
     Qt6::Widgets
 )
+
+# ============================================================================
+# 单元测试
+# ============================================================================
+add_executable(test_mathutils
+    tests/test_mathutils.cpp
+)
+
+target_link_libraries(test_mathutils PRIVATE
+    snooker_common
+)
