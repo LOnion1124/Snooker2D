@@ -37,19 +37,19 @@ app
 
 注意：现有 `snooker_common` 是纯 C++ 静态库，建议保留其纯净性，新增一个单独的 `snooker_contracts` target。如果课程或文档必须称为 common 层，可把文件放在 `src/common/contracts/`，但在 CMake 上单独建库。
 
-## 2. 当前耦合点
+## 2. 当前耦合点（✅ 全部已解决 — 2026-07-13）
 
 执行重构前，先确认以下问题仍然存在：
 
-- `src/view/*.cpp` 包含 `../viewmodel/*.h`。
-- `src/view/*.h` 暴露 `setViewModel(ConcreteViewModel*)`。
-- `GameView` 直接调用 `GameViewModel::ballPositions()`、`cueAngle()`、`setPower()`、`confirmWhiteBallPlacement()` 等方法。
-- `MainWindow` 创建 `GameState` 后直接调用 `startNewGame()`。
-- `MainWindow::setupBindings()` 负责角度同步、比分同步、犯规提示、比赛结束消息等业务协调。
-- `GameView` 通过中文阶段字符串判断是否可瞄准或击球。
-- `CMakeLists.txt` 中 `snooker_view` 依赖 `snooker_viewmodel` 和 `snooker_model`。
+- ~~`src/view/*.cpp` 包含 `../viewmodel/*.h`。~~ → ✅ 已移除，View 只包含 `contracts/`
+- ~~`src/view/*.h` 暴露 `setViewModel(ConcreteViewModel*)`。~~ → ✅ 已改为 `bind(GameUiBus*)`
+- ~~`GameView` 直接调用 `GameViewModel::ballPositions()`、`cueAngle()`、`setPower()`、`confirmWhiteBallPlacement()` 等方法。~~ → ✅ 已改为消费 `TableViewState` DTO + 发送 Bus 信号
+- ~~`MainWindow` 创建 `GameState` 后直接调用 `startNewGame()`。~~ → ✅ 已移入 `GameSessionViewModel::start()`
+- ~~`MainWindow::setupBindings()` 负责角度同步、比分同步、犯规提示、比赛结束消息等业务协调。~~ → ✅ 已移入 `GameSessionViewModel`
+- ~~`GameView` 通过中文阶段字符串判断是否可瞄准或击球。~~ → ✅ 已改为基于 `TableViewState::canAim` / `canShoot` 等布尔字段
+- ~~`CMakeLists.txt` 中 `snooker_view` 依赖 `snooker_viewmodel` 和 `snooker_model`。~~ → ✅ `snooker_view` 只链接 `snooker_contracts` + `snooker_common` + `Qt6::Widgets`
 
-这些点都应在后续 task 中被移除。
+这些点都已在后续 task 中被移除。
 
 ## 3. Task 拆分
 
@@ -553,3 +553,89 @@ src/common/contracts
 ```
 
 完成后，MVVM 边界应从“约定上分层”变为“编译依赖上强制分层”。
+---
+
+## 8. 重构完成记录（2026-07-13）
+
+### 8.1 新增文件清单
+
+| 文件 | 说明 |
+|------|------|
+| `src/common/contracts/GameViewState.h` | 5 个 ViewState DTO（Ball/Table/Cue/Score/GameInfo） |
+| `src/common/contracts/GameUiBus.h` | View <-> ViewModel 通信契约（QObject 信号/槽） |
+| `src/common/contracts/GameUiBus.cpp` | MOC 触发编译单元 |
+| `src/common/contracts/ContractsInit.h` | `registerContractTypes()` 声明 |
+| `src/common/contracts/ContractsInit.cpp` | 调用 `qRegisterMetaType<T>()` 注册所有自定义类型 |
+| `src/viewmodel/GameSessionViewModel.h` | ViewModel 层协调器声明 |
+| `src/viewmodel/GameSessionViewModel.cpp` | 协调器实现：持有 Bus/GameState/子VM，统一推送 ViewState |
+| `tests/architecture/check_mvvm_boundaries.ps1` | 架构护栏检查脚本（7 项检查） |
+
+### 8.2 修改文件清单
+
+| 文件 | 变更说明 |
+|------|----------|
+| `CMakeLists.txt` | 新增 `snooker_contracts` target；`snooker_view` 不再链接 viewmodel/model；新增 `check_architecture` custom target |
+| `src/view/GameView.h` | `GameViewModel*` -> `GameUiBus*`；`setViewModel()` -> `bind()`；缓存 `QVariantList` -> `QVector<BallViewState>` |
+| `src/view/GameView.cpp` | 移除 `../viewmodel/GameViewModel.h`；`refresh()` 改为 `applyTableState()`；鼠标/滚轮事件发 Bus 信号 |
+| `src/view/CueControl.h` | `CueControlViewModel*` -> `GameUiBus*`；`setViewModel()` -> `bind()` |
+| `src/view/CueControl.cpp` | 移除 `../viewmodel/CueControlViewModel.h`；监听 `cueStateChanged` 更新 UI |
+| `src/view/ScoreBoard.h` | `ScoreViewModel*` -> `GameUiBus*`；`setViewModel()` -> `bind()`；`refresh()` -> `applyScoreState()` |
+| `src/view/ScoreBoard.cpp` | 移除 `../viewmodel/ScoreViewModel.h`；监听 `scoreStateChanged` 更新 UI |
+| `src/view/GameInfoPanel.h` | `GameViewModel*` -> `GameUiBus*`；`setViewModel()` -> `bind()`；样式按 `phaseKind` 枚举判断 |
+| `src/view/GameInfoPanel.cpp` | 移除 `../viewmodel/GameViewModel.h`；restart 按钮发 `restartRequested()` |
+| `src/app/MainWindow.h` | 移除 Model/子VM 指针；持有 `GameUiBus*` + `GameSessionViewModel*` |
+| `src/app/MainWindow.cpp` | 移除 `setupBindings()` 及所有业务连接；`initGame()` 变为纯 composition root |
+
+### 8.3 依赖图（实际）
+
+```text
+snooker_common       -> 纯 C++（Types / Constants / MathUtils）
+snooker_contracts    -> snooker_common + Qt6::Core（DTO + Bus）
+snooker_model        -> snooker_common + Qt6::Core
+snooker_viewmodel    -> snooker_contracts + snooker_model + snooker_common + Qt6::Core
+snooker_view         -> snooker_contracts + snooker_common + Qt6::Widgets  <- 不链接 viewmodel/model
+snooker_app          -> 组装所有层（唯一的 composition root）
+```
+
+### 8.4 数据流
+
+```text
+View 用户操作                       ViewModel 协调器
+-------------                      ----------------
+mouseMove/wheel/click              GameSessionViewModel
+  |                                  |
+  +- cueAngleRequested(angle) ----> onCueAngleRequested -> m_cueViewModel->setAngle()
+  +- cuePowerRequested(power) ----> onCuePowerRequested -> m_cueViewModel->setPower()
+  +- shotAnimationFinished() -----> onShotAnimationFinished -> m_gameViewModel->shoot()
+  +- whiteBallPlacementRequested -> onWhiteBallPlacementRequested -> confirmWhiteBallPlacement()
+  +- restartRequested() ----------> onRestartRequested -> m_gameViewModel->restartGame()
+
+ViewModel 状态推送                  View 渲染
+-------------------                ---------
+GameSessionViewModel               GameView / CueControl /
+  |                                ScoreBoard / GameInfoPanel
+  +- pushTableState() -----------> applyTableState() -> update()
+  +- pushCueState() -------------> applyCueState() -> slider/label 更新
+  +- pushScoreState() -----------> applyScoreState() -> 分数/犯规刷新
+  +- pushGameInfoState() --------> applyGameInfoState() -> 玩家/阶段/提示刷新
+```
+
+### 8.5 验证结果
+
+| 检查项 | 结果 |
+|--------|------|
+| 完整编译 | PASS |
+| 单元测试 (`test_mathutils`, 60 项) | PASS |
+| `src/view` 不含 `viewmodel` / `model` include | PASS |
+| `src/view` 不含 `setViewModel` | PASS |
+| `snooker_view` 不链接 `snooker_viewmodel` | PASS |
+| `snooker_view` 不链接 `snooker_model` | PASS |
+| `MainWindow.cpp` 不含 `startNewGame` / `setupBindings` | PASS |
+| 架构护栏脚本 (`check_architecture`) | 7/7 PASS |
+
+### 8.6 后续建议
+
+- **Phase 2**：将 `CueControlViewModel` / `ScoreViewModel` 并入 `GameSessionViewModel`
+- **Phase 3**：`GameViewModel::ballPositions()` 返回 `QVariantList` 可改为直接返回 `QVector<BallViewState>`
+- **Phase 4**：将单一 `GameUiBus` 拆分为 4 个独立 channel
+- **文档更新**：`docs/DESIGN.md` 和 `docs/app/design.md` 需同步更新新依赖图
