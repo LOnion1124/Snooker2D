@@ -62,6 +62,11 @@ void GameView::applyTableState(const TableViewState& state) {
         m_shotAnimationGap = cueGap();
     }
 
+    // 模拟结束且可以瞄准时恢复瞄准工具显示
+    if (!state.isSimulating && state.canAim && m_hideAimingTools) {
+        m_hideAimingTools = false;
+    }
+
     update(); // 触发 repaint
 }
 

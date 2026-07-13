@@ -55,9 +55,6 @@ target_link_libraries(snooker_model PUBLIC
 
 # ViewModel 层（依赖 Model + Contracts + Qt Core）
 add_library(snooker_viewmodel STATIC
-    src/viewmodel/GameViewModel.cpp
-    src/viewmodel/CueControlViewModel.cpp
-    src/viewmodel/ScoreViewModel.cpp
     src/viewmodel/GameSessionViewModel.cpp
 )
 

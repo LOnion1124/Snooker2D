@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QTimer>
 #include "contracts/GameUiBus.h"
 #include "contracts/GameViewState.h"
 #include "../common/Types.h"
@@ -8,12 +9,10 @@
 namespace Snooker2D {
 
 class GameState;
-class GameViewModel;
-class CueControlViewModel;
-class ScoreViewModel;
 
 // ViewModel 层协调器
-// 持有 Bus、Model、所有子 ViewModel，统一处理 View 请求和状态推送
+// 持有 Bus、Model，直接管理游戏状态转换和 UI 状态推送
+// 不依赖中间子 ViewModel
 class GameSessionViewModel : public QObject {
     Q_OBJECT
 
@@ -42,6 +41,9 @@ private slots:
     void onModelWhiteBallPlaced();
     void onPlayerScoreChanged(int score);
 
+    // 定时器
+    void onSimulationTick();
+
 private:
     // 状态推送
     void pushTableState();
@@ -54,9 +56,19 @@ private:
 
     GameUiBus* m_bus = nullptr;
     GameState* m_gameState = nullptr;
-    GameViewModel* m_gameViewModel = nullptr;
-    CueControlViewModel* m_cueViewModel = nullptr;
-    ScoreViewModel* m_scoreViewModel = nullptr;
+
+    // 物理模拟定时器
+    QTimer* m_simulationTimer = nullptr;
+
+    // 击球控制状态（原 CueControlViewModel）
+    double m_cueAngle = 0.0;
+    double m_cuePower = 50.0;
+    double m_englishX = 0.0;
+    double m_englishY = 0.0;
+
+    // 计分板消息（原 ScoreViewModel）
+    QString m_foulMessage;
+    QString m_statusMessage;
 };
 
 } // namespace Snooker2D
