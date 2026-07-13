@@ -64,6 +64,8 @@ void GameViewModel::setAngle(double angle) {
 }
 
 void GameViewModel::setPower(double power) {
+    if (power < 0.0) power = 0.0;
+    if (power > 100.0) power = 100.0;
     if (m_cuePower != power) {
         m_cuePower = power;
         emit cuePowerChanged();
