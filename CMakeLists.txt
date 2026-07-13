@@ -22,6 +22,25 @@ target_include_directories(snooker_common PUBLIC
 )
 
 # ============================================================================
+# Contracts 层（静态库，依赖 Common + Qt Core）
+# View 与 ViewModel 之间的唯一跨层通信契约
+# ============================================================================
+add_library(snooker_contracts STATIC
+    src/common/contracts/ContractsInit.cpp
+    src/common/contracts/GameUiBus.cpp
+)
+
+target_include_directories(snooker_contracts PUBLIC
+    ${CMAKE_SOURCE_DIR}/src/common
+    ${CMAKE_SOURCE_DIR}/src/common/contracts
+)
+
+target_link_libraries(snooker_contracts PUBLIC
+    snooker_common
+    Qt6::Core
+)
+
+# ============================================================================
 # Model 层（静态库，依赖 Common + Qt Core）
 # ============================================================================
 add_library(snooker_model STATIC
@@ -50,6 +69,7 @@ add_library(snooker_viewmodel STATIC
     src/viewmodel/GameViewModel.cpp
     src/viewmodel/CueControlViewModel.cpp
     src/viewmodel/ScoreViewModel.cpp
+    src/viewmodel/GameSessionViewModel.cpp
 )
 
 target_include_directories(snooker_viewmodel PUBLIC
@@ -59,6 +79,7 @@ target_include_directories(snooker_viewmodel PUBLIC
 )
 
 target_link_libraries(snooker_viewmodel PUBLIC
+    snooker_contracts
     snooker_model
     snooker_common
     Qt6::Core
@@ -76,14 +97,12 @@ add_library(snooker_view STATIC
 
 target_include_directories(snooker_view PUBLIC
     ${CMAKE_SOURCE_DIR}/src/view
-    ${CMAKE_SOURCE_DIR}/src/viewmodel
-    ${CMAKE_SOURCE_DIR}/src/model
     ${CMAKE_SOURCE_DIR}/src/common
+    ${CMAKE_SOURCE_DIR}/src/common/contracts
 )
 
 target_link_libraries(snooker_view PUBLIC
-    snooker_viewmodel
-    snooker_model
+    snooker_contracts
     snooker_common
     Qt6::Widgets
 )
@@ -101,12 +120,14 @@ target_include_directories(snooker_app PUBLIC
     ${CMAKE_SOURCE_DIR}/src/viewmodel
     ${CMAKE_SOURCE_DIR}/src/model
     ${CMAKE_SOURCE_DIR}/src/common
+    ${CMAKE_SOURCE_DIR}/src/common/contracts
 )
 
 target_link_libraries(snooker_app PUBLIC
     snooker_view
     snooker_viewmodel
     snooker_model
+    snooker_contracts
     snooker_common
     Qt6::Widgets
 )
@@ -123,6 +144,7 @@ target_link_libraries(Snooker2D PRIVATE
     snooker_view
     snooker_viewmodel
     snooker_model
+    snooker_contracts
     snooker_common
     Qt6::Widgets
 )
@@ -136,4 +158,14 @@ add_executable(test_mathutils
 
 target_link_libraries(test_mathutils PRIVATE
     snooker_common
+)
+
+# ============================================================================
+# 架构护栏检查（验证 MVVM 依赖边界未被破坏）
+# ============================================================================
+add_custom_target(check_architecture
+    COMMAND powershell -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/architecture/check_mvvm_boundaries.ps1
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Running MVVM architecture boundary checks..."
 )
