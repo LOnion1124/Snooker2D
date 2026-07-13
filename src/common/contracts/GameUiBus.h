@@ -5,14 +5,8 @@
 
 namespace Snooker2D {
 
-// ---------------------------------------------------------------------------
-// GameUiBus — View 与 ViewModel 之间的唯一通信契约
-//
-// View  只通过此 Bus 接收 ViewState 并发送请求信号
-// ViewModel 只通过此 Bus 推送 ViewState 并处理请求信号
-//
-// 此 Bus 不含任何业务逻辑，仅仅是信号/槽契约载体。
-// ---------------------------------------------------------------------------
+// View 与 ViewModel 之间的唯一通信契约
+// 不含业务逻辑，仅作为信号/槽契约载体
 class GameUiBus : public QObject {
     Q_OBJECT
 
@@ -20,14 +14,14 @@ public:
     explicit GameUiBus(QObject* parent = nullptr) : QObject(parent) {}
 
 signals:
-    // ===== ViewModel → View =====
+    // ViewModel → View
     void tableStateChanged(const TableViewState& state);
     void cueStateChanged(const CueViewState& state);
     void scoreStateChanged(const ScoreViewState& state);
     void gameInfoStateChanged(const GameInfoViewState& state);
     void shotAnimationCancelled();
 
-    // ===== View → ViewModel =====
+    // View → ViewModel
     void cueAngleRequested(double angle);
     void cuePowerRequested(double power);
     void shotRequested();

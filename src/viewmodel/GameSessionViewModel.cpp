@@ -13,20 +13,20 @@ namespace Snooker2D {
 GameSessionViewModel::GameSessionViewModel(QObject* parent)
     : QObject(parent)
 {
-    // ---- 创建通信总线 ----
+    // 创建 Bus
     m_bus = new GameUiBus(this);
 
-    // ---- 创建 Model ----
+    // 创建 Model
     m_gameState = new GameState(this);
 
-    // ---- 创建子 ViewModel ----
+    // 创建子 ViewModel
     m_gameViewModel = new GameViewModel(this);
     m_gameViewModel->setGameState(m_gameState);
 
     m_cueViewModel = new CueControlViewModel(this);
     m_scoreViewModel = new ScoreViewModel(this);
 
-    // ---- View 请求 → 内部处理 ----
+    // View 请求 → 内部处理
     connect(m_bus, &GameUiBus::cueAngleRequested,
             this, &GameSessionViewModel::onCueAngleRequested);
     connect(m_bus, &GameUiBus::cuePowerRequested,
@@ -38,7 +38,7 @@ GameSessionViewModel::GameSessionViewModel(QObject* parent)
     connect(m_bus, &GameUiBus::restartRequested,
             this, &GameSessionViewModel::onRestartRequested);
 
-    // ---- Model 信号 → 状态推送 ----
+    // Model 信号 → 状态推送
     connect(m_gameState, &GameState::phaseChanged,
             this, &GameSessionViewModel::onModelPhaseChanged);
     connect(m_gameState, &GameState::turnChanged,
@@ -58,19 +58,17 @@ GameSessionViewModel::GameSessionViewModel(QObject* parent)
     connect(m_gameState->player2(), &Player::scoreChanged,
             this, &GameSessionViewModel::onPlayerScoreChanged);
 
-    // ---- 模拟逐帧刷新 ----
-    // GameViewModel 持有 simulation timer，将 ballPositionsChanged
-    // 转发为 tableStateChanged
+    // 模拟逐帧刷新
     connect(m_gameViewModel, &GameViewModel::ballPositionsChanged,
             this, &GameSessionViewModel::pushTableState);
 
-    // ---- 子 VM 角度/力度变化 → 同步推送到 Bus ----
+    // 子 VM 角度/力度变化 → 推送 Bus
     connect(m_cueViewModel, &CueControlViewModel::angleChanged,
             this, [this](double) { pushCueState(); pushTableState(); });
     connect(m_cueViewModel, &CueControlViewModel::powerChanged,
             this, [this](double) { pushCueState(); pushTableState(); });
 
-    // ---- 分数子 VM 变化 → 推送计分状态 ----
+    // 分数子 VM 变化 → 推送计分状态
     connect(m_scoreViewModel, &ScoreViewModel::player1ScoreChanged,
             this, &GameSessionViewModel::pushScoreState);
     connect(m_scoreViewModel, &ScoreViewModel::player2ScoreChanged,
@@ -87,10 +85,6 @@ void GameSessionViewModel::start() {
     pushAllStates();
     m_gameState->startNewGame();
 }
-
-// =========================================================================
-// Bus 请求处理
-// =========================================================================
 
 void GameSessionViewModel::onCueAngleRequested(double angle) {
     m_cueViewModel->setAngle(angle);
@@ -114,11 +108,7 @@ void GameSessionViewModel::onRestartRequested() {
     m_gameViewModel->restartGame();
 }
 
-// =========================================================================
-// Model 信号回调
-// =========================================================================
-
-void GameSessionViewModel::onModelPhaseChanged(GamePhase phase) {
+void GameSessionViewModel::onModelPhaseChanged(GamePhase /*phase*/) {
     pushAllStates();
 }
 
@@ -131,7 +121,6 @@ void GameSessionViewModel::onModelSimulationStarted() {
 }
 
 void GameSessionViewModel::onModelSimulationFinished() {
-    // 模拟结束后更新所有状态
     pushAllStates();
 }
 
@@ -150,21 +139,15 @@ void GameSessionViewModel::onModelWhiteBallPlaced() {
 }
 
 void GameSessionViewModel::onPlayerScoreChanged(int /*score*/) {
-    // 从 GameState 同步分数到 ScoreViewModel
     if (m_gameState) {
         m_scoreViewModel->setPlayer1Score(m_gameState->player1()->score());
         m_scoreViewModel->setPlayer2Score(m_gameState->player2()->score());
     }
 }
 
-// =========================================================================
-// 状态推送
-// =========================================================================
-
 void GameSessionViewModel::pushTableState() {
     TableViewState state;
 
-    // 球位置
     if (m_gameViewModel) {
         const QVariantList positions = m_gameViewModel->ballPositions();
         for (const QVariant& item : positions) {
@@ -179,13 +162,12 @@ void GameSessionViewModel::pushTableState() {
         }
     }
 
-    // 角度/力度
     if (m_cueViewModel) {
         state.cueAngle = m_cueViewModel->angle();
         state.cuePower = m_cueViewModel->power();
     }
 
-    // 坐标系检测：任何球坐标超出 [0, TABLE_*] 范围即为中心坐标系
+    // 坐标系检测
     state.centeredCoordinates = false;
     for (const BallViewState& bvs : state.balls) {
         if (bvs.x < 0.0 || bvs.y < 0.0 ||
@@ -195,7 +177,6 @@ void GameSessionViewModel::pushTableState() {
         }
     }
 
-    // 交互状态判定
     if (m_gameState) {
         const GamePhase phase = m_gameState->currentPhase();
         const bool isWhiteBallPlacing = m_gameState->isWhiteBallPlacing();
@@ -204,16 +185,14 @@ void GameSessionViewModel::pushTableState() {
         state.isPlacingWhiteBall = isWhiteBallPlacing;
         state.isSimulating = isSimulating;
 
-        // canAim: 不在放置白球、不在模拟、游戏已开始且未结束
         state.canAim = !isWhiteBallPlacing
                     && !isSimulating
                     && phase != GamePhase::NotStarted
                     && phase != GamePhase::GameOver;
 
-        // canShoot: 可以瞄准 且 白球在台上
         bool whiteBallOnTable = false;
         for (const BallViewState& bvs : state.balls) {
-            if (bvs.type == 0 && bvs.onTable) { // type 0 = White
+            if (bvs.type == 0 && bvs.onTable) {
                 whiteBallOnTable = true;
                 break;
             }

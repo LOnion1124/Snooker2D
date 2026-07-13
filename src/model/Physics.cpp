@@ -52,9 +52,7 @@ bool Physics::allBallsStopped(const std::vector<Ball*>& balls) {
     return true;
 }
 
-// ----------------------------------------------------------------------------
-// Private 实现
-// ----------------------------------------------------------------------------
+// 私有方法实现
 
 void Physics::applyFriction(std::vector<Ball*>& balls, double deltaTime) {
     for (auto* ball : balls) {

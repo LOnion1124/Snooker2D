@@ -5,14 +5,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
-# ============================================================================
-# Qt 6 依赖（通过 vcpkg 或系统安装）
-# ============================================================================
+# Qt 6 依赖
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
-# ============================================================================
-# Common 层（静态库，纯 C++，不依赖 Qt）
-# ============================================================================
+# Common 层（纯 C++，不依赖 Qt）
 add_library(snooker_common STATIC
     src/common/MathUtils.cpp
 )
@@ -21,10 +17,7 @@ target_include_directories(snooker_common PUBLIC
     ${CMAKE_SOURCE_DIR}/src/common
 )
 
-# ============================================================================
-# Contracts 层（静态库，依赖 Common + Qt Core）
-# View 与 ViewModel 之间的唯一跨层通信契约
-# ============================================================================
+# Contracts 层（View 与 ViewModel 的唯一跨层通信契约）
 add_library(snooker_contracts STATIC
     src/common/contracts/ContractsInit.cpp
     src/common/contracts/GameUiBus.cpp
@@ -40,9 +33,7 @@ target_link_libraries(snooker_contracts PUBLIC
     Qt6::Core
 )
 
-# ============================================================================
-# Model 层（静态库，依赖 Common + Qt Core）
-# ============================================================================
+# Model 层（依赖 Common + Qt Core）
 add_library(snooker_model STATIC
     src/model/Ball.cpp
     src/model/Table.cpp
@@ -62,9 +53,7 @@ target_link_libraries(snooker_model PUBLIC
     Qt6::Core
 )
 
-# ============================================================================
-# ViewModel 层（静态库，依赖 Model + Qt Core）
-# ============================================================================
+# ViewModel 层（依赖 Model + Contracts + Qt Core）
 add_library(snooker_viewmodel STATIC
     src/viewmodel/GameViewModel.cpp
     src/viewmodel/CueControlViewModel.cpp
@@ -85,9 +74,7 @@ target_link_libraries(snooker_viewmodel PUBLIC
     Qt6::Core
 )
 
-# ============================================================================
-# View 层（静态库，依赖 ViewModel + Qt Widgets）
-# ============================================================================
+# View 层（依赖 Contracts + Common + Qt Widgets，不依赖 ViewModel/Model）
 add_library(snooker_view STATIC
     src/view/GameView.cpp
     src/view/CueControl.cpp
@@ -107,9 +94,7 @@ target_link_libraries(snooker_view PUBLIC
     Qt6::Widgets
 )
 
-# ============================================================================
-# App 层（可执行文件，依赖 View + Qt Widgets）
-# ============================================================================
+# App 层（依赖所有层）
 add_library(snooker_app STATIC
     src/app/MainWindow.cpp
 )
@@ -132,9 +117,7 @@ target_link_libraries(snooker_app PUBLIC
     Qt6::Widgets
 )
 
-# ============================================================================
 # 主可执行文件
-# ============================================================================
 add_executable(Snooker2D
     src/main.cpp
 )
@@ -149,9 +132,7 @@ target_link_libraries(Snooker2D PRIVATE
     Qt6::Widgets
 )
 
-# ============================================================================
 # 单元测试
-# ============================================================================
 add_executable(test_mathutils
     tests/test_mathutils.cpp
 )
@@ -160,9 +141,7 @@ target_link_libraries(test_mathutils PRIVATE
     snooker_common
 )
 
-# ============================================================================
-# 架构护栏检查（验证 MVVM 依赖边界未被破坏）
-# ============================================================================
+# 架构护栏检查
 add_custom_target(check_architecture
     COMMAND powershell -ExecutionPolicy Bypass
             -File ${CMAKE_SOURCE_DIR}/tests/architecture/check_mvvm_boundaries.ps1
