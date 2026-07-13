@@ -53,4 +53,12 @@ void Ball::resetPosition(const Vector2D& initialPos) {
     emit ballReset();
 }
 
+void Ball::respot() {
+    m_position = m_initialPosition;
+    m_velocity = Vector2D(0.0, 0.0);
+    m_pocketed = false;
+    m_onTable = true;
+    emit ballReset();
+}
+
 } // namespace Snooker2D

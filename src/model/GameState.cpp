@@ -208,6 +208,18 @@ void GameState::handlePostShot() {
         currentPlayer()->addScore(score);
     }
 
+    // 红球未清空时，复位新落袋的彩球（斯诺克规则：彩球需回位）
+    if (!allRedsPocketed()) {
+        for (size_t i = 0; i < m_balls.size(); ++i) {
+            if (i < m_preShotPocketed.size() && m_preShotPocketed[i]) continue;
+            if (!m_balls[i]->isPocketed()) continue;
+            if (m_balls[i]->type() == BallType::White) continue;
+            if (isColorBall(m_balls[i]->type())) {
+                m_balls[i]->respot();
+            }
+        }
+    }
+
     // 阶段转换
     if (m_phase == GamePhase::RedBall) {
         // 红球阶段：进红球 → 下一杆击彩球；进彩球 → 犯规（暂简单切换回合）
@@ -292,7 +304,26 @@ void GameState::selectFreeBall(BallType color) {
 }
 
 void GameState::checkGameOver() {
-    // TODO: 判定台面是否清空、分差是否不可追
+    bool anyBallOnTable = false;
+    for (const auto& ball : m_balls) {
+        if (ball->type() == BallType::White) continue;
+        if (ball->isOnTable()) {
+            anyBallOnTable = true;
+            break;
+        }
+    }
+    if (!anyBallOnTable) {
+        m_phase = GamePhase::GameOver;
+        emit phaseChanged(m_phase);
+        // 当前台面分高者胜出，或最后一杆玩家胜出
+        Player* winner = nullptr;
+        if (m_player1->score() > m_player2->score()) {
+            winner = m_player1.get();
+        } else if (m_player2->score() > m_player1->score()) {
+            winner = m_player2.get();
+        }
+        emit gameOver(winner);
+    }
 }
 
 bool GameState::allRedsPocketed() const {

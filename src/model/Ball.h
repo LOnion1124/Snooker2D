@@ -28,6 +28,7 @@ public:
     void setPocketed(bool pocketed);
     void setOnTable(bool onTable);
     void resetPosition(const Vector2D& initialPos);
+    void respot();
 
 signals:
     void positionChanged();
