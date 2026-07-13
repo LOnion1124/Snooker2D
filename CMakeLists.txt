@@ -77,6 +77,7 @@ add_library(snooker_view STATIC
     src/view/CueControl.cpp
     src/view/ScoreBoard.cpp
     src/view/GameInfoPanel.cpp
+    src/view/MainWindow.cpp
 )
 
 target_include_directories(snooker_view PUBLIC
@@ -91,36 +92,12 @@ target_link_libraries(snooker_view PUBLIC
     Qt6::Widgets
 )
 
-# App 层（依赖所有层）
-add_library(snooker_app STATIC
-    src/app/MainWindow.cpp
-)
-
-target_include_directories(snooker_app PUBLIC
-    ${CMAKE_SOURCE_DIR}/src/app
-    ${CMAKE_SOURCE_DIR}/src/view
-    ${CMAKE_SOURCE_DIR}/src/viewmodel
-    ${CMAKE_SOURCE_DIR}/src/model
-    ${CMAKE_SOURCE_DIR}/src/common
-    ${CMAKE_SOURCE_DIR}/src/common/contracts
-)
-
-target_link_libraries(snooker_app PUBLIC
-    snooker_view
-    snooker_viewmodel
-    snooker_model
-    snooker_contracts
-    snooker_common
-    Qt6::Widgets
-)
-
-# 主可执行文件
+# 主可执行文件（App 层逻辑内联在 main.cpp 中）
 add_executable(Snooker2D
     src/main.cpp
 )
 
 target_link_libraries(Snooker2D PRIVATE
-    snooker_app
     snooker_view
     snooker_viewmodel
     snooker_model

@@ -2,6 +2,12 @@
 
 namespace Snooker2D {
 
+// 应用配置
+constexpr const char* APP_NAME = "Snooker2D";
+constexpr const char* APP_VERSION = "1.0.0";
+constexpr int DEFAULT_WINDOW_WIDTH = 1280;
+constexpr int DEFAULT_WINDOW_HEIGHT = 720;
+
 // 球桌尺寸（像素）
 constexpr double TABLE_WIDTH  = 800.0;
 constexpr double TABLE_HEIGHT = 400.0;

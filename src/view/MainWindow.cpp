@@ -1,18 +1,17 @@
 #include "MainWindow.h"
-#include "../app/AppConfig.h"
+
+// Common
+#include "../common/Constants.h"
 
 // Contracts
 #include "contracts/GameUiBus.h"
 #include "contracts/ContractsInit.h"
 
-// ViewModel
-#include "../viewmodel/GameSessionViewModel.h"
-
-// View
-#include "../view/GameView.h"
-#include "../view/CueControl.h"
-#include "../view/ScoreBoard.h"
-#include "../view/GameInfoPanel.h"
+// View (sibling widgets)
+#include "GameView.h"
+#include "CueControl.h"
+#include "ScoreBoard.h"
+#include "GameInfoPanel.h"
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -26,11 +25,10 @@ MainWindow::MainWindow(QWidget* parent)
     setWindowTitle(APP_NAME);
     resize(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
 
-    // 注册 contracts 自定义类型到 Qt 元对象系统
+    // 注册 contracts 自定义类型到 Qt 元对象系统（一次性）
     registerContractTypes();
 
     setupUI();
-    initGame();
 }
 
 MainWindow::~MainWindow() = default;
@@ -60,19 +58,15 @@ void MainWindow::setupUI() {
     setCentralWidget(centralWidget);
 }
 
-void MainWindow::initGame() {
-    // 创建 ViewModel 协调器（内部创建 Bus、Model、子 ViewModel）
-    m_sessionViewModel = new GameSessionViewModel(this);
-    m_uiBus = m_sessionViewModel->bus();
+void MainWindow::init(GameUiBus* bus) {
+    m_uiBus = bus;
+    if (!m_uiBus) return;
 
     // View 统一绑定 Bus（不感知具体 ViewModel）
     m_gameView->bind(m_uiBus);
     m_cueControl->bind(m_uiBus);
     m_scoreBoard->bind(m_uiBus);
     m_gameInfoPanel->bind(m_uiBus);
-
-    // 启动游戏
-    m_sessionViewModel->start();
 }
 
 } // namespace Snooker2D

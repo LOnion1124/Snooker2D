@@ -38,8 +38,8 @@ $setViewModelCalls = Select-String -Path "$root/src/view/*.cpp","$root/src/view/
     -Pattern 'setViewModel' 2>$null
 Check-Violation "View must not have setViewModel methods" $setViewModelCalls
 
-# 4. App should not call Model business methods
-$appBusinessCalls = Select-String -Path "$root/src/app/MainWindow.cpp" `
+# 4. App entry point (main.cpp) should not call Model business methods
+$appBusinessCalls = Select-String -Path "$root/src/main.cpp" `
     -Pattern 'startNewGame|setupBindings|performShot' 2>$null
 Check-Violation "App must not call Model business methods" $appBusinessCalls
 
