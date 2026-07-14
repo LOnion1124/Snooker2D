@@ -96,17 +96,35 @@ ViewModel 和 View 的跨层信号槽由 App 层在 App.cpp 中集中绑定（10
 
 \subsection{开发者 C — Common + App 层}
 
-负责公共类型与工具、DTO 设计、应用装配和构建配置。
+负责公共类型与工具、DTO 设计、应用装配、构建配置和项目管理。
 
-\textbf{Common 层}：Constants.h（球桌/球/袋口/物理常量）、Types.h（Vector2D 含 14 个运算符、4 个枚举、3 个辅助函数）、MathUtils.h/.cpp（9 个向量/几何函数）、GameViewState.h（5 个 ViewState DTO）。
+\subsubsection{Common 层}
 
-\textbf{App 层}：App.cpp 中完成全部跨层装配——创建 SessionViewModel 和 MainWindow，10 条 connect 覆盖属性绑定和命令绑定。MainWindow 通过 getter 暴露 4 个子 View 供 App 层绑定。
+\textbf{Constants.h}：球桌尺寸（800×400）、球参数（半径10、质量1.0、红球15、总计22）、袋口半径（16）、D区几何、物理参数（步长1/60s、摩擦0.99、碰撞恢复0.88、库边弹性0.77、速度阈值0.05）、游戏参数（最大力度100、最大初速15.0）和应用配置（窗口标题、尺寸）。
 
-\textbf{构建配置}：CMake 四层 target（common/model/viewmodel/view），架构护栏脚本（check\_architecture target）持续验证依赖边界。60 条 Common 层单元测试通过。
+\textbf{Types.h}：Vector2D 结构体——14个运算符（+/-/一元-/ * / / /+=/-=/*=//=/==/!=/dot/cross/length/lengthSquared/normalized），成员函数委托给MathUtils自由函数。4个枚举（BallType 8种球、FoulType 7种犯规、GamePhase 6阶段、PlayerId）。3个inline constexpr辅助（ballValue、isColorBall、oppositePlayer）。
 
-\textbf{协作经历}：与 B 在 Common 层的接口协调——B 在物理调优时修改 Constants.h 和新增 closestPointOnSegment，C 在后续整理中接受并统一了这些变更。App 层的 MainWindow 经历了三轮重构（按钮→鼠标击球、Bus 模式→直接信号绑定、App 集中装配）。
+\textbf{MathUtils.h/.cpp}：9个函数（dot/cross/length/lengthSquared/normalize/reflect/distance/circleOverlap/closestPointOnSegment）。只实现当前被调用的函数，不做预铺。
 
-\textbf{技术要点}：Vector2D 复合赋值运算符减少物理引擎临时对象；inline constexpr 辅助函数零运行时开销；DTO 设计将 canAim/canShoot 等交互状态判定上移到 ViewModel，View 不解析游戏规则。
+\textbf{GameViewState.h}：5个纯数据DTO——BallViewState、TableViewState、CueViewState、ScoreViewState、GameInfoViewState。DTO中canAim/canShoot/canShoot等布尔字段使View无需解析游戏规则即可控制交互状态；phaseKind枚举字段供View做样式分支而不依赖中文字符串。
+
+设计决策：FoulResult结构体定义在Model层Rules.h（含QString依赖Qt，不适合纯C++的Common层）。袋口坐标由Model层Table.h管理。
+
+\subsubsection{App 层}
+
+\textbf{App.h/.cpp}：唯一的装配车间。App::run()中创建GameSessionViewModel和MainWindow，通过10条QObject::connect集中完成跨层信号槽绑定——属性绑定5条（ViewModel信号→View槽）和命令绑定5条（View信号→ViewModel槽）。MainWindow通过4个getter暴露子View供App绑定。通知绑定（Model→ViewModel）保留在GameSessionViewModel构造函数内部，因ViewModel本就持有Model指针。
+
+\textbf{MainWindow}：纯布局容器。setupUI()创建4个View控件并排列左右分栏，4个getter暴露子View指针。不含任何跨层连接逻辑。
+
+\textbf{架构演进}：App层经历了三轮重构。第一轮：引入GameUiBus作为通信中间件，View绑定Bus而非具体ViewModel类型。第二轮：删除3个子ViewModel（GameViewModel/CueControlViewModel/ScoreViewModel），全部合并到GameSessionViewModel。第三轮：取消Bus，各层自管signal/slot，App集中connect。每次重构都是团队讨论后共同推进，当前方案是三轮迭代后的收敛结果。
+
+\subsubsection{构建配置与测试}
+
+CMake四层target（common/model/viewmodel/view），View层编译期不链接ViewModel/Model。架构护栏脚本check\_mvvm\_boundaries.ps1（含7项检查）作为CMake custom target持续验证依赖边界。60条Common层单元测试（向量运算15条、几何6条、Vector2D运算符15条、成员函数6条、Types辅助12条、常量6条）全部通过，无第三方测试框架依赖。
+
+\subsubsection{协作经历}
+
+与B在Common层的接口协调：B在物理调优时直接修改Constants.h参数（摩擦、弹性系数）并新增closestPointOnSegment函数。C在后续整理中接受并统一了这些变更——分层架构中的灰色地带需要灵活处理。与A在MainWindow的协作中，信号连接经历了按钮击球→鼠标击球→Bus→直接绑定的多次变迁，每次都需要精确协调接口变更。
 
 \section{团队协作}
 
