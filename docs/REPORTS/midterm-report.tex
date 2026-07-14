@@ -74,13 +74,15 @@ ViewModel 和 View 的跨层信号槽由 App 层在 App.cpp 中集中绑定（10
 
 \subsection{开发者 A — View 层}
 
-负责球桌渲染、鼠标交互、球杆动画、控件布局。
+负责球桌渲染、鼠标交互、球杆动画、控件布局，共实现 GameView、CueControl、ScoreBoard、GameInfoPanel、MainWindow 五个 View 组件。所有 View 组件仅依赖 Common 层的 ViewState DTO 和 Qt::Widgets，编译期不链接 ViewModel/Model。
 
-\textbf{球桌渲染}：GameView::paintEvent 中实现台面（绿色）、库边（棕色）、6 袋口（黑色）、22 颗球（按类型着色+高光效果）的完整绘制管线。通过 gameToPixel 实现游戏坐标到像素坐标的转换，支持居中坐标系。
+\textbf{GameView（球桌视图）}：paintEvent 中实现六步绘制管线——深灰背景填充、绿色台面与棕色库边、D 区白球放置引导（半透明弧线区域+竖线）、6 个黑色袋口、22 颗球（按 BallType 着色，白球/黑球特殊描边色，每球左上角 35\% 大小白色高光模拟 3D 效果）、瞄准辅助虚线、球杆动画。resizeEvent 中根据窗口宽高比自动适配 2:1 比例的球桌矩形，保证球桌始终占视图 90\% 且不变形。gameToPixel/pixelToGame 双向坐标转换方法通过 centeredCoordinates 标志自动切换居中坐标系（物理引擎使用）和左上角坐标系（球桌坐标）。
 
-\textbf{鼠标交互}：将击球操作从按钮改为鼠标操作——移动调整瞄准方向、滚轮调节力度、按下触发球杆动画、松开进入物理击球。GameInfoPanel 改为 bind 模式接收 GameInfoViewState 更新。
+\textbf{球杆动画与鼠标交互}：将击球操作从按钮改为全鼠标操作——setMouseTracking(true) 开启鼠标追踪，mouseMoveEvent 中通过 atan2 实时计算鼠标相对于白球的方位角并 emit angleChanged；wheelEvent 以每格 5\% 步进调节击球力度并 emit powerChanged；mousePressEvent 中按下左键触发 playShotAnimation，启动 16ms 定时器，每帧将球杆间隙递减 10 像素直到归零，动画结束时 hideAimingTools 隐藏瞄准工具并 emit shotAnimationFinished 通知 ViewModel 进入物理模拟。drawCue 中使用 QLinearGradient 实现球杆木纹渐变效果（深棕→浅棕→米黄），杆头单独着色。
 
-\textbf{技术难点}：坐标系转换（居中坐标系与像素坐标的自动检测）、球杆动画与鼠标事件的时序配合。
+\textbf{辅助控件}：CueControl 实现双滑块面板——角度滑块（0-359°）和力度滑块（0-100\%），applyCueState 槽中使用 blockSignals 避免滑块反馈环路。ScoreBoard 展示双方总分、单杆得分、犯规信息和比赛状态，大字体得分突出显示。GameInfoPanel 通过 phaseStyleSheet 方法根据 GamePhase 枚举（红球/彩球/犯规/自由球/结束）为阶段标签应用不同颜色样式，D 区放置提示仅在 showWhiteBallPlacementHint 为真时显示。MainWindow 作为纯布局容器，setupUI 中以 3:1 比例左右分栏——左侧放置 GameView + CueControl（上下排列），右侧放置 ScoreBoard + GameInfoPanel，通过 4 个 getter 暴露子 View 供 App 层绑定信号槽。
+
+\textbf{技术难点}：坐标系转换——物理引擎使用以球桌中心为原点的居中坐标系，而 QPainter 绘制需要左上角像素坐标，通过 centeredCoordinates 标志在 gameToPixel/pixelToGame 中自动偏移 TABLE\_WIDTH/2 和 TABLE\_HEIGHT/2 解决。球杆动画与鼠标事件的时序配合——动画期间（m\_isShotAnimating 为真）需要阻止鼠标交互（updateCueAngleFromMouse 和 wheelEvent 均检查 aimingToolsVisible），动画结束后通过 hideAimingTools 标志等待 ViewModel 的 applyTableState 更新 canAim 才恢复显示瞄准工具，避免击球动画与下一次瞄准的视觉重叠。
 
 \subsection{开发者 B — Model + ViewModel 层}
 
@@ -178,7 +180,11 @@ Ventub（C） & 13 & Common / App / 文档 \\
 
 \subsection{开发者 A}
 
-View 层开发让我深刻体会到 MVVM 架构中“数据驱动界面”的含义——所有绘制都来自 ViewModel 的属性变更通知，不再手动管理刷新。鼠标交互的实现比预期复杂，从按钮切换到鼠标涉及角度计算、坐标转换、动画衔接、事件过滤等多个细节。与 C 的协作中，App 层的信号连接经历了多次重构，每次都需要精确调整，让我理解了集成层的维护成本。
+View 层开发让我深刻体会到 MVVM 架构中"数据驱动界面"的含义——所有绘制都来自 ViewModel 的属性变更通知，View 自身不主动管理刷新时机。applyTableState 是唯一的更新入口，缓存 ViewState 后调用 update() 触发 Qt 重绘。这种单向数据流使得 View 层的调试变得简单：只要检查 applyTableState 收到的 DTO 内容是否正确，就能定位问题是在 ViewModel 的数据转换还是 View 的渲染逻辑。DTO 中 canAim/canShoot/isPlacingWhiteBall/isSimulating 等布尔字段的设计也让 View 无需引入任何游戏规则知识——例如 aimingToolsVisible() 方法仅通过组合这些布尔值判断是否显示瞄准工具，完全不需要理解"什么情况下可以瞄准"的游戏语义。
+
+鼠标交互的实现比预期复杂得多。从最初的按钮触发击球到全鼠标操作，经历了角度计算（atan2 坐标系转换，角度归一化到 0-360°）、坐标变换（像素坐标→游戏坐标→球桌坐标的三级映射）、动画衔接（16ms 定时器驱动球杆间隙逐帧递减，需精确控制动画期间的事件屏蔽与结束后的状态恢复）、事件过滤（放置白球模式、动画播放中、模拟运行中三种场景下需分别处理鼠标事件的优先级）等多个细节的处理。特别是 aimingToolsVisible 方法的设计——需要同时考虑 isPlacingWhiteBall（放置模式不显示瞄准）、hideAimingTools（击球后隐藏直到下一轮）、m\_isShotAnimating（动画期间仅显示球杆）三种状态的组合——这个看似简单的布尔判断实际上经历了多次 bug 修复才稳定。
+
+与 C 的协作中，App 层的信号连接经历了按钮击球→鼠标击球→GameUiBus 中间件→直接绑定的多次重构。每次架构变迁都意味着 View 暴露的信号签名需要重新协商——例如从 clicked() 改为 angleChanged(double)/powerChanged(double)/shotAnimationFinished()，再到 whiteBallPlacementRequested(double, double) 的加入。MainWindow 从最初包含信号连接逻辑到最终退化为纯布局容器+getter 暴露，体现了"装配逻辑集中到 App 层"这一原则的逐步明晰。与 B 的跨层协作中，最大的收获是"约定优于实现"——只要 ViewState DTO 的字段语义和信号签名在 Common 层约定清楚，View 和 ViewModel 可以真正并行开发：我在 GameView 中开发球杆动画时，B 甚至还没有完成物理引擎的击球回调，但因为我只需要 emit shotAnimationFinished() 信号，双方的工作完全解耦。
 
 \subsection{开发者 B}
 
