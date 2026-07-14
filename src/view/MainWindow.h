@@ -5,7 +5,6 @@
 
 namespace Snooker2D {
 
-// Forward declarations (contracts + view only, no viewmodel/model)
 class GameUiBus;
 class GameView;
 class CueControl;
@@ -19,14 +18,11 @@ public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override;
 
-    // 由外部（main.cpp / App 层）注入 Bus 并完成绑定与启动
-    void init(GameUiBus* bus);
+    // 由 App 层传入 Bus，绑定所有子 View
+    void bindAll(GameUiBus* bus);
 
 private:
     void setupUI();
-
-    // 通信总线（契约层）
-    GameUiBus* m_uiBus = nullptr;
 
     // View 子控件
     GameView* m_gameView = nullptr;

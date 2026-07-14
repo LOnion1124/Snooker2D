@@ -2,7 +2,7 @@
 
 ## 职责
 
-应用程序入口、五层对象创建与组装、跨层信号/槽绑定、构建配置。
+应用程序入口、View 和 ViewModel 的对象创建与 Bus 绑定。**App 层不承载游戏业务逻辑。**
 
 ## 文件
 
@@ -10,59 +10,42 @@
 |------|------|
 | `main.cpp` | QApplication 创建，MainWindow 显示 |
 | `AppConfig.h` | 窗口标题、版本、默认尺寸 |
-| `MainWindow.h/.cpp` | 依赖注入、信号绑定、启动流程 |
-| `CMakeLists.txt` | 五层 target 自底向上链接 |
+| `MainWindow.h/.cpp` | 创建 Bus、绑定 View、启动 |
+| `CMakeLists.txt` | 六层 target 自底向上链接，架构护栏检查 |
 | `vcpkg.json` | 依赖声明（当前为空） |
-| `.gitignore` | 构建/IDE/Qt 生成文件 |
+| `.gitignore` | 构建/IDE/Qt/LaTeX 生成文件 |
 
 ## MainWindow 设计
 
 ### 创建顺序
 
 ```
-setupUI() → initGame() → setupBindings()
+setupUI() → initGame()
 ```
 
-`initGame()` 必须在 `setupBindings()` 之前，因为信号连接依赖已创建的对象。
+`setupBindings()` 已删除（7/13 重构）。跨层协调全部交给 GameSessionViewModel。
 
 ### initGame() 流程
 
 ```
-new GameState → new GameViewModel.setGameState()
-             → new CueControlViewModel
-             → new ScoreViewModel
-                  ↓ setViewModel()
-             GameView / CueControl / ScoreBoard / GameInfoPanel
-                  ↓
-             GameState::startNewGame()
+new GameSessionViewModel      // 内部创建 Bus + Model + 子 VM
+m_uiBus = vm->bus()           // 获取 Bus
+view->bind(m_uiBus)           // 4 个 View 统一绑定
+vm->start()                   // 推送初始状态 + 开始游戏
 ```
 
-GameInfoPanel 于 7/13 改为 `setViewModel(GameViewModel*)`，内部自行绑定 currentPlayer/gamePhase 属性，不再由 MainWindow 逐条转发。
+### 与旧版对比
 
-### setupBindings() 信号连接
-
-共 9 条跨层连接：
-
-| 信号 | 方向 | 目标 |
-|------|------|------|
-| GameView::shotAnimationFinished | → | GameVM::shoot() |
-| CueControlVM::angleChanged | → | GameVM::setAngle |
-| CueControlVM::powerChanged | → | GameVM::setPower |
-| GameVM::cueAngleChanged | → | CueControlVM::setAngle（反向同步） |
-| GameVM::cuePowerChanged | → | CueControlVM::setPower（反向同步） |
-| GameVM::playerScoreChanged | → | ScoreVM 同步 |
-| GameVM::gameRestarted | → | ScoreVM 清空提示 |
-| GameVM::foulOccurred | → | ScoreVM |
-| GameVM::gameOver | → | ScoreVM |
-
-**7/13 重构要点**：
-- 击球触发从 CueControl 按钮改为 GameView 鼠标点击（含球杆动画）
-- 角度/力度改为双向同步：鼠标在球桌上拖动可调角度/力度，控件滑块亦可
-- GameInfoPanel 改为通过 setViewModel 自行绑定，不再逐信号转发
-- 新增 gameRestarted 信号处理，重启时清空犯规/状态提示
+| 维度 | 重构前 | 重构后 |
+|------|--------|--------|
+| 成员变量 | 8 个（1 Model + 3 VM + 4 View） | 6 个（1 Bus + 1 VM + 4 View） |
+| 方法 | setupUI + initGame + setupBindings | setupUI + initGame |
+| 信号连接 | 9 条 connect | 0 条 |
+| 业务逻辑 | 比分、角度同步、犯规提示 | 全部下沉到 GameSessionViewModel |
 
 ## 构建设计
 
-- Qt 通过系统预编译安装（`C:\Qt\6.10.3\mingw_64`），CMake `find_package` 解析
-- 不通过 vcpkg 安装 Qt（MinGW triplet 会触发源码编译）
-- 五层各为独立 static library，便于增量编译和单元测试
+- Qt 通过系统预编译安装，CMake `find_package` 解析
+- `snooker_view` 不链接 `snooker_viewmodel` / `snooker_model`（编译期强制）
+- 架构护栏：`cmake --build build --target check_architecture`
+- 五层 + contracts 各为独立 static library

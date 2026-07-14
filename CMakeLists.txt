@@ -92,9 +92,10 @@ target_link_libraries(snooker_view PUBLIC
     Qt6::Widgets
 )
 
-# 主可执行文件（App 层逻辑内联在 main.cpp 中）
+# 主可执行文件（App 层负责组装 MVVM）
 add_executable(Snooker2D
     src/main.cpp
+    src/app/App.cpp
 )
 
 target_link_libraries(Snooker2D PRIVATE

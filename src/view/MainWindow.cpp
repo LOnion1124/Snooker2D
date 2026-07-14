@@ -1,13 +1,6 @@
 #include "MainWindow.h"
-
-// Common
-#include "../common/Constants.h"
-
-// Contracts
+#include "Constants.h"
 #include "contracts/GameUiBus.h"
-#include "contracts/ContractsInit.h"
-
-// View (sibling widgets)
 #include "GameView.h"
 #include "CueControl.h"
 #include "ScoreBoard.h"
@@ -24,10 +17,6 @@ MainWindow::MainWindow(QWidget* parent)
 {
     setWindowTitle(APP_NAME);
     resize(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
-
-    // 注册 contracts 自定义类型到 Qt 元对象系统（一次性）
-    registerContractTypes();
-
     setupUI();
 }
 
@@ -58,15 +47,12 @@ void MainWindow::setupUI() {
     setCentralWidget(centralWidget);
 }
 
-void MainWindow::init(GameUiBus* bus) {
-    m_uiBus = bus;
-    if (!m_uiBus) return;
-
-    // View 统一绑定 Bus（不感知具体 ViewModel）
-    m_gameView->bind(m_uiBus);
-    m_cueControl->bind(m_uiBus);
-    m_scoreBoard->bind(m_uiBus);
-    m_gameInfoPanel->bind(m_uiBus);
+void MainWindow::bindAll(GameUiBus* bus) {
+    if (!bus) return;
+    m_gameView->bind(bus);
+    m_cueControl->bind(bus);
+    m_scoreBoard->bind(bus);
+    m_gameInfoPanel->bind(bus);
 }
 
 } // namespace Snooker2D

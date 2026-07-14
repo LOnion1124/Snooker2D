@@ -45,3 +45,8 @@
 | 07-13 | 新增 test_mathutils target + 60 条单元测试 | 验证 Common 层无回归 |
 | 07-13 | 文档分 4 批提交（common/app/架构/报告） | C 的提交数 3→8 |
 | 07-13 | 中期报告更新（含测试内容），.gitignore 加 LaTeX 产物 | 报告反映最新进度 |
+| 07-13 | **MVVM 严格重构**：新增 contracts 层、GameUiBus、GameSessionViewModel | View 不再依赖 ViewModel/Model（编译期强制） |
+| 07-13 | View 层 bind(GameUiBus*) 替代 setViewModel，删除全部 ViewModel include | 架构护栏 7/7 通过 |
+| 07-13 | MainWindow 瘦身：删除 setupBindings()、9 条 connect，仅剩 Bus 注入 | App 层无业务逻辑 |
+| 07-13 | 代码风格统一：去除 ASCII 分隔线注释（CMakeLists + 6 源文件） | 净减 78 行 |
+| 07-13 | 更新 docs/ 全部架构文档，反映 contracts 层和新的依赖边界 | 文档与代码一致 |
