@@ -40,17 +40,24 @@ Common 层（GameViewState DTO / Constants / Types / MathUtils）
 
 View、ViewModel、Model 各自声明自己的 signal/slot，互不 include 对方的头文件。App 层在 `App.cpp` 中完成全部 `connect()` 调用。
 
-## 三种绑定
+## 两种绑定（App 层集中）
 
-### 通知绑定：Model → ViewModel
+App 层集中管理需要解耦的两组绑定。通知绑定（Model→ViewModel）留在 ViewModel 内部——因为 ViewModel 本就持有 Model 指针，两者是翻译关系而非绑定关系。
 
-Model 发射自身业务信号（`phaseChanged`、`simulationFinished` 等），App 层 connect 到 ViewModel 的 public slots。
+### 通知绑定：Model → ViewModel（ViewModel 内部）
+
+Model 发射自身业务信号，ViewModel 构造时在内部 connect。
 
 ```cpp
-// App.cpp
-QObject::connect(gameState, &GameState::phaseChanged,
-        &sessionViewModel, &GameSessionViewModel::onModelPhaseChanged);
+// GameSessionViewModel 构造函数
+connect(m_gameState, &GameState::phaseChanged,
+        this, &GameSessionViewModel::onModelPhaseChanged);
+connect(m_gameState, &GameState::simulationFinished,
+        this, &GameSessionViewModel::onModelSimulationFinished);
+// 共 9 条，全部在 ViewModel 内部
 ```
+
+为什么不在 App 层：ViewModel 和 Model 之间是翻译关系——ViewModel 持有 Model 指针、调用 Model 方法。connect 放在构造函数更自然，不需要暴露 getter。
 
 ### 属性绑定：ViewModel → View
 
@@ -74,7 +81,7 @@ QObject::connect(gameView, &GameView::angleChanged,
 
 ## 关键代码
 
-### App.cpp — 全部跨层连接集中于此
+### App.cpp — 属性绑定和命令绑定集中于此
 
 ```cpp
 int App::run(int argc, char* argv[]) {
@@ -83,20 +90,10 @@ int App::run(int argc, char* argv[]) {
     GameSessionViewModel sessionViewModel;
     MainWindow mainWindow;
 
-    GameView*       gameView      = mainWindow.gameView();
-    CueControl*     cueControl    = mainWindow.cueControl();
-    ScoreBoard*     scoreBoard    = mainWindow.scoreBoard();
-    GameInfoPanel*  gameInfoPanel = mainWindow.gameInfoPanel();
-    GameState*      gameState     = sessionViewModel.gameState();
-    Player*         player1       = sessionViewModel.player1();
-    Player*         player2       = sessionViewModel.player2();
-
-    // Model → ViewModel（通知绑定）
-    QObject::connect(gameState, &GameState::phaseChanged,
-            &sessionViewModel, &GameSessionViewModel::onModelPhaseChanged);
-    QObject::connect(gameState, &GameState::simulationStarted,
-            &sessionViewModel, &GameSessionViewModel::onModelSimulationStarted);
-    // ... 共 9 条
+    GameView* gameView = mainWindow.gameView();
+    CueControl* cueControl = mainWindow.cueControl();
+    ScoreBoard* scoreBoard = mainWindow.scoreBoard();
+    GameInfoPanel* gameInfoPanel = mainWindow.gameInfoPanel();
 
     // ViewModel → View（属性绑定）
     QObject::connect(&sessionViewModel, &GameSessionViewModel::tableStateReady,
@@ -125,9 +122,6 @@ class GameSessionViewModel : public QObject {
     Q_OBJECT
 public:
     void start();
-    GameState* gameState() const;
-    Player* player1() const;
-    Player* player2() const;
 
 public slots:
     // View 命令
@@ -136,19 +130,35 @@ public slots:
     void onShotAnimationFinished();
     void placeWhiteBall(double x, double y);
     void restart();
-    // Model 信号回调
-    void onModelPhaseChanged(GamePhase phase);
-    void onModelSimulationStarted();
-    void onModelSimulationFinished();
-    void onModelFoulOccurred(const FoulResult& result);
-    // ...
 
 signals:
     void tableStateReady(const TableViewState& state);
     void cueStateReady(const CueViewState& state);
     void scoreStateReady(const ScoreViewState& state);
     void gameInfoStateReady(const GameInfoViewState& state);
+
+private slots:
+    // Model 信号回调（构造函数中 connect）
+    void onModelPhaseChanged(GamePhase phase);
+    void onModelSimulationStarted();
+    void onModelSimulationFinished();
+    // ...
 };
+```
+
+### GameSessionViewModel 构造函数 — 通知绑定在内部
+
+```cpp
+GameSessionViewModel::GameSessionViewModel(QObject* parent) : QObject(parent) {
+    m_gameState = new GameState(this);
+    // ...
+    // Model 信号 → 内部处理（通知绑定，ViewModel 和 Model 本就耦合）
+    connect(m_gameState, &GameState::phaseChanged,
+            this, &GameSessionViewModel::onModelPhaseChanged);
+    connect(m_gameState, &GameState::simulationFinished,
+            this, &GameSessionViewModel::onModelSimulationFinished);
+    // 共 9 条
+}
 ```
 
 ### GameView.h — 自声明信号和槽
@@ -270,9 +280,9 @@ void GameSessionViewModel::pushTableState() {
 
 View 的所有交互判断通过 ViewState DTO 中的布尔字段（`canAim`、`canShoot`、`isSimulating`）驱动，不通过中文字符串或枚举值做业务分支。`phaseKind` 仅用于样式选择。
 
-### GameSessionViewModel 暴露 Model getter
+### 通知绑定在 ViewModel 内部
 
-为了让 App 层能够 connect Model 信号到 ViewModel 槽，GameSessionViewModel 暴露 `gameState()`、`player1()`、`player2()` 的只读访问。
+Model→ViewModel 的 connect 留在 GameSessionViewModel 构造函数。因为 ViewModel 本就持有 Model 指针并直接调用其方法——两者是翻译关系，不是绑定关系。把这种 connect 放到 App 层只会增加不必要的 getter 暴露。
 
 ### 架构护栏
 
@@ -286,9 +296,10 @@ View 的所有交互判断通过 ViewState DTO 中的布尔字段（`canAim`、`
 | 维度 | 重构前 | 重构后 |
 |------|--------|--------|
 | View 耦合 | include 具体 ViewModel 类 | 只 include Common（GameViewState.h） |
-| App 层职责 | 创建对象 + 9 条 connect 业务协调 | 创建对象 + 19 条 connect（纯接线） |
+| App 层职责 | 创建对象 + 9 条 connect 业务协调 | 创建对象 + 10 条 connect（属性+命令绑定） |
 | 通信中间件 | GameUiBus（12 信号） | 无（直接 signal↔slot） |
-| 绑定分布 | 分散在 SessionVM + 4 个 View | 全部在 App.cpp |
+| 通知绑定 | SessionVM 内部 connect | 同左（ViewModel 内部，不改动） |
+| 属性/命令绑定 | 分散在 SessionVM + 4 个 View | 全部在 App.cpp |
 | 子 ViewModel | GameVM/CueVM/ScoreVM 三个 | 全部合并到 GameSessionViewModel |
 | CMake target | 6 个 | 4 个 |
 

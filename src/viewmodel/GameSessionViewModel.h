@@ -8,7 +8,6 @@
 namespace Snooker2D {
 
 class GameState;
-class Player;
 
 class GameSessionViewModel : public QObject {
     Q_OBJECT
@@ -19,10 +18,6 @@ public:
 
     void start();
 
-    GameState* gameState() const { return m_gameState; }
-    Player* player1() const;
-    Player* player2() const;
-
 public slots:
     // View 命令
     void setAngle(double angle);
@@ -31,7 +26,15 @@ public slots:
     void placeWhiteBall(double x, double y);
     void restart();
 
-    // Model 信号回调
+signals:
+    // ViewModel → View
+    void tableStateReady(const TableViewState& state);
+    void cueStateReady(const CueViewState& state);
+    void scoreStateReady(const ScoreViewState& state);
+    void gameInfoStateReady(const GameInfoViewState& state);
+    void shotAnimationCancelled();
+
+private slots:
     void onModelPhaseChanged(GamePhase phase);
     void onModelTurnChanged();
     void onModelSimulationStarted();
@@ -40,15 +43,6 @@ public slots:
     void onModelWhiteBallPlacingStarted();
     void onModelWhiteBallPlaced();
     void onPlayerScoreChanged(int score);
-
-signals:
-    void tableStateReady(const TableViewState& state);
-    void cueStateReady(const CueViewState& state);
-    void scoreStateReady(const ScoreViewState& state);
-    void gameInfoStateReady(const GameInfoViewState& state);
-    void shotAnimationCancelled();
-
-private slots:
     void onSimulationTick();
 
 private:

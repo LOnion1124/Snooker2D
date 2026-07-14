@@ -16,17 +16,29 @@ GameSessionViewModel::GameSessionViewModel(QObject* parent)
     m_simulationTimer->setInterval(1000 / 60);
     connect(m_simulationTimer, &QTimer::timeout,
             this, &GameSessionViewModel::onSimulationTick);
+
+    // Model 信号 → 内部处理
+    connect(m_gameState, &GameState::phaseChanged,
+            this, &GameSessionViewModel::onModelPhaseChanged);
+    connect(m_gameState, &GameState::turnChanged,
+            this, &GameSessionViewModel::onModelTurnChanged);
+    connect(m_gameState, &GameState::simulationStarted,
+            this, &GameSessionViewModel::onModelSimulationStarted);
+    connect(m_gameState, &GameState::simulationFinished,
+            this, &GameSessionViewModel::onModelSimulationFinished);
+    connect(m_gameState, &GameState::foulOccurred,
+            this, &GameSessionViewModel::onModelFoulOccurred);
+    connect(m_gameState, &GameState::whiteBallPlacingStarted,
+            this, &GameSessionViewModel::onModelWhiteBallPlacingStarted);
+    connect(m_gameState, &GameState::whiteBallPlaced,
+            this, &GameSessionViewModel::onModelWhiteBallPlaced);
+    connect(m_gameState->player1(), &Player::scoreChanged,
+            this, &GameSessionViewModel::onPlayerScoreChanged);
+    connect(m_gameState->player2(), &Player::scoreChanged,
+            this, &GameSessionViewModel::onPlayerScoreChanged);
 }
 
 GameSessionViewModel::~GameSessionViewModel() = default;
-
-Player* GameSessionViewModel::player1() const {
-    return m_gameState ? m_gameState->player1() : nullptr;
-}
-
-Player* GameSessionViewModel::player2() const {
-    return m_gameState ? m_gameState->player2() : nullptr;
-}
 
 void GameSessionViewModel::start() {
     pushAllStates();

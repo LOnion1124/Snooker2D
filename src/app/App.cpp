@@ -2,8 +2,6 @@
 #include <QApplication>
 #include "MainWindow.h"
 #include "GameSessionViewModel.h"
-#include "GameState.h"
-#include "Player.h"
 #include "GameView.h"
 #include "CueControl.h"
 #include "ScoreBoard.h"
@@ -22,30 +20,6 @@ int App::run(int argc, char* argv[])
     CueControl* cueControl = mainWindow.cueControl();
     ScoreBoard* scoreBoard = mainWindow.scoreBoard();
     GameInfoPanel* gameInfoPanel = mainWindow.gameInfoPanel();
-    GameState* gameState = sessionViewModel.gameState();
-    Player* player1 = sessionViewModel.player1();
-    Player* player2 = sessionViewModel.player2();
-
-    // Model → ViewModel（通知绑定）
-
-    QObject::connect(gameState, &GameState::phaseChanged,
-            &sessionViewModel, &GameSessionViewModel::onModelPhaseChanged);
-    QObject::connect(gameState, &GameState::turnChanged,
-            &sessionViewModel, &GameSessionViewModel::onModelTurnChanged);
-    QObject::connect(gameState, &GameState::simulationStarted,
-            &sessionViewModel, &GameSessionViewModel::onModelSimulationStarted);
-    QObject::connect(gameState, &GameState::simulationFinished,
-            &sessionViewModel, &GameSessionViewModel::onModelSimulationFinished);
-    QObject::connect(gameState, &GameState::foulOccurred,
-            &sessionViewModel, &GameSessionViewModel::onModelFoulOccurred);
-    QObject::connect(gameState, &GameState::whiteBallPlacingStarted,
-            &sessionViewModel, &GameSessionViewModel::onModelWhiteBallPlacingStarted);
-    QObject::connect(gameState, &GameState::whiteBallPlaced,
-            &sessionViewModel, &GameSessionViewModel::onModelWhiteBallPlaced);
-    QObject::connect(player1, &Player::scoreChanged,
-            &sessionViewModel, &GameSessionViewModel::onPlayerScoreChanged);
-    QObject::connect(player2, &Player::scoreChanged,
-            &sessionViewModel, &GameSessionViewModel::onPlayerScoreChanged);
 
     // ViewModel → View（属性绑定）
 
