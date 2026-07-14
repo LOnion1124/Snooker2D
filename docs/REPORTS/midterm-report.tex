@@ -1,0 +1,188 @@
+\documentclass[11pt]{ctexart}
+
+\usepackage{geometry}
+\geometry{a4paper, margin=2.5cm}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{graphicx}
+
+\title{Snooker2D 项目中期总结报告}
+\author{开发者 A：刘XX \quad 开发者 B：XXX \quad 开发者 C：Ventub}
+\date{2026年7月14日}
+
+\begin{document}
+
+\maketitle
+
+\section{项目概况}
+
+Snooker2D 是一个基于 C++17 和 Qt 6 的 2D 斯诺克台球游戏，采用课程讲授的 MVVM 五层架构。项目三人协作，10 天工期，当前处于中期检查节点。
+
+\section{技术架构}
+
+\subsection{分层设计}
+
+项目拆分为四层编译目标，App 层在主可执行文件中完成装配：
+
+\begin{center}
+\begin{tabular}{|c|l|l|l|}
+\hline
+\textbf{层} & \textbf{职责} & \textbf{编译依赖} & \textbf{负责人} \\
+\hline
+Common & 全局类型、常量、工具函数、DTO & 无 & C \\
+Model & 游戏状态机、物理引擎、规则判定 & Common + Qt::Core & B \\
+ViewModel & 数据翻译、状态推送、命令处理 & Model + Common + Qt::Core & B \\
+View & 界面渲染、用户输入 & Common + Qt::Widgets & A \\
+App & 对象装配、信号槽绑定 & 所有层 & C \\
+\hline
+\end{tabular}
+\end{center}
+
+关键约束：View 层不链接 ViewModel/Model（CMake 编译期强制）。
+
+\subsection{层间通信}
+
+ViewModel 和 View 的跨层信号槽由 App 层在 App.cpp 中集中绑定（10 条 connect）。Model 到 ViewModel 的通知绑定在 ViewModel 构造函数内部完成。
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|}
+\hline
+\textbf{绑定类型} & \textbf{方向} & \textbf{连接位置} & \textbf{数量} \\
+\hline
+属性绑定 & ViewModel → View & App.cpp & 5 \\
+命令绑定 & View → ViewModel & App.cpp & 5 \\
+通知绑定 & Model → ViewModel & ViewModel 构造 & 9 \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{已完成功能}
+
+\begin{itemize}
+\item 斯诺克标准 22 颗球的初始摆球和球桌渲染
+\item 鼠标瞄准与击球（含球杆动画）
+\item 力度/角度双模控制（滑块 + 鼠标拖动）
+\item 球-球弹性碰撞、球-库边反弹、摩擦力减速
+\item 袋口检测与落袋、D 区白球复位
+\item 计分板、游戏信息面板、比赛重启
+\item 60 条 Common 层单元测试、架构护栏自动检查
+\end{itemize}
+
+\section{分工完成情况}
+
+\subsection{开发者 A — View 层}
+
+负责球桌渲染、鼠标交互、球杆动画、控件布局。
+
+\textbf{球桌渲染}：GameView::paintEvent 中实现台面（绿色）、库边（棕色）、6 袋口（黑色）、22 颗球（按类型着色+高光效果）的完整绘制管线。通过 gameToPixel 实现游戏坐标到像素坐标的转换，支持居中坐标系。
+
+\textbf{鼠标交互}：将击球操作从按钮改为鼠标操作——移动调整瞄准方向、滚轮调节力度、按下触发球杆动画、松开进入物理击球。GameInfoPanel 改为 bind 模式接收 GameInfoViewState 更新。
+
+\textbf{技术难点}：坐标系转换（居中坐标系与像素坐标的自动检测）、球杆动画与鼠标事件的时序配合。
+
+\subsection{开发者 B — Model + ViewModel 层}
+
+负责游戏状态机、物理引擎、规则判定、数据翻译和状态推送。
+
+\textbf{物理引擎}：固定时间步长（1/60s）的六步模拟流程——运动、球-球碰撞、球-库边碰撞、袋口检测、摩擦减速、硬边界约束。球-球碰撞采用等质量弹性碰撞公式，库边碰撞通过 closestPointOnSegment 计算接触点法线。
+
+\textbf{规则引擎}：FoulResult 结构体承载犯规类型、描述文本和罚分。checkFoul 按优先级检测白球落袋、空杆、先击错球、无球碰库四种犯规。
+
+\textbf{GameSessionViewModel}：唯一的 ViewModel 协调器。构造时连接 Model 的 9 个信号到内部处理槽。5 个 pushXxxState() 方法从 Model 读取数据、构造 ViewState DTO、emit 到 View。5 个 public slots 接收 View 命令。
+
+\textbf{技术难点}：物理参数的经验性调优（恢复系数 0.96→0.88、库边弹性 0.77 的多轮试错）、库边碰撞中 closestPointOnSegment 的应用。
+
+\subsection{开发者 C — Common + App 层}
+
+负责公共类型与工具、DTO 设计、应用装配和构建配置。
+
+\textbf{Common 层}：Constants.h（球桌/球/袋口/物理常量）、Types.h（Vector2D 含 14 个运算符、4 个枚举、3 个辅助函数）、MathUtils.h/.cpp（9 个向量/几何函数）、GameViewState.h（5 个 ViewState DTO）。
+
+\textbf{App 层}：App.cpp 中完成全部跨层装配——创建 SessionViewModel 和 MainWindow，10 条 connect 覆盖属性绑定和命令绑定。MainWindow 通过 getter 暴露 4 个子 View 供 App 层绑定。
+
+\textbf{构建配置}：CMake 四层 target（common/model/viewmodel/view），架构护栏脚本（check\_architecture target）持续验证依赖边界。60 条 Common 层单元测试通过。
+
+\textbf{协作经历}：与 B 在 Common 层的接口协调——B 在物理调优时修改 Constants.h 和新增 closestPointOnSegment，C 在后续整理中接受并统一了这些变更。App 层的 MainWindow 经历了三轮重构（按钮→鼠标击球、Bus 模式→直接信号绑定、App 集中装配）。
+
+\textbf{技术要点}：Vector2D 复合赋值运算符减少物理引擎临时对象；inline constexpr 辅助函数零运行时开销；DTO 设计将 canAim/canShoot 等交互状态判定上移到 ViewModel，View 不解析游戏规则。
+
+\section{团队协作}
+
+三位成员通过 Git 协作，提交遵循 \texttt{type(layer): description} 规范。
+
+\textbf{提交统计}：
+
+\begin{center}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{开发者} & \textbf{提交数} & \textbf{负责层} \\
+\hline
+LOnion1124（A） & 14 & View \\
+Ironhammer Std（B） & 8 & Model / ViewModel \\
+Ventub（C） & 13 & Common / App / 文档 \\
+\hline
+\end{tabular}
+\end{center}
+
+\textbf{协作亮点}：MVVM 分层开发使三人真正做到并行工作——View 层在 Model 未完整时即可通过 DTO 骨架进行 UI 开发。跨层接口变更通过 Git 历史可追踪，未出现编译失败级别的接口不匹配。
+
+\textbf{架构演进}：项目经历了三轮架构重构——引入 contracts 层和 GameUiBus、删除子 ViewModel 合并到 GameSessionViewModel、取消 Bus 改用 App 集中绑定。每次重构都是团队共同决策、逐层推进。
+
+\section{阶段性成果展示}
+
+\begin{center}
+\textbf{[截图 1：游戏主窗口]}
+\vspace{1cm}
+
+（此处插入游戏运行截图——球桌、22颗球、瞄准线、球杆、控件、计分板）
+
+\vspace{2cm}
+
+\textbf{[截图 2：物理碰撞效果]}
+
+\vspace{1cm}
+
+（此处插入击球后球运动的截图）
+
+\vspace{2cm}
+
+\textbf{[截图 3：D 区白球复位]}
+
+\vspace{1cm}
+
+（此处插入白球落袋后 D 区放置截图）
+\end{center}
+
+\section{个人反思与收获}
+
+\subsection{开发者 A}
+
+View 层开发让我深刻体会到 MVVM 架构中“数据驱动界面”的含义——所有绘制都来自 ViewModel 的属性变更通知，不再手动管理刷新。鼠标交互的实现比预期复杂，从按钮切换到鼠标涉及角度计算、坐标转换、动画衔接、事件过滤等多个细节。与 C 的协作中，App 层的信号连接经历了多次重构，每次都需要精确调整，让我理解了集成层的维护成本。
+
+\subsection{开发者 B}
+
+Model 层开发最核心的挑战不在于物理公式本身，而在于处理“不完美的现实”——球碰撞恢复系数、库边不同弹性、摩擦力非线性，这些细节在理论推导中被简化，但在视觉反馈中会暴露。多次参数试错让我理解了物理引擎调优需要耐心。ViewModel 层的设计让我体会到接口设计的权衡：暴露太少 View 无法工作，暴露太多则性能和维护成本上升。与 A 和 C 的跨层协作中，最大的收获是“约定优于实现”——只要层间信号签名约定清楚，三方可以真正并行。
+
+\subsection{开发者 C}
+
+作为 Common 层和 App 层的负责人，我承担了“基础设施提供者”和“装配工人”的双重角色。Common 层要求对需求的预判——Vector2D 的复合赋值运算符在一开始看似多余，但当物理引擎要求就地更新速度向量时立刻体现价值。App 层要求对所有层接口的全局理解——每一条 connect 都意味着理解一个信号的来源和去向。
+
+与 B 的协作让我认识到，分层架构中的灰色地带需要灵活处理——B 在物理调优时修改了 Common 层文件，严格来说超出了分工约定，但为了迭代效率我选择了接受而非回退。三轮架构重构（Bus 引入→子 VM 合并→Bus 取消）让我切身体会了架构设计的权衡——没有一劳永逸的方案，只有在实践中持续迭代的改进。
+
+\section{智能体的使用}
+
+本项目选择以人为主的开发模式。大模型智能体在开发中仅用于补充性工作：代码补全与格式化、文档草稿生成、构建配置调试建议。所有核心架构设计、接口协调、技术决策均由团队成员自主完成。
+
+\section{后续计划}
+
+\begin{enumerate}[leftmargin=*]
+\item 完善斯诺克规则引擎（犯规判定全部场景、自由球、输赢判定）
+\item 补充 Model 层单元测试和端到端集成测试
+\item CI/CD 配置
+\item UI 美化与资源整理
+\item 文档完善
+\end{enumerate}
+
+\end{document}
