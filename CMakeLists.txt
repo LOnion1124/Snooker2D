@@ -5,7 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
-# Qt 6 依赖
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
 # Common 层（纯 C++，不依赖 Qt）
@@ -15,22 +14,6 @@ add_library(snooker_common STATIC
 
 target_include_directories(snooker_common PUBLIC
     ${CMAKE_SOURCE_DIR}/src/common
-)
-
-# Contracts 层（View 与 ViewModel 的唯一跨层通信契约）
-add_library(snooker_contracts STATIC
-    src/common/contracts/ContractsInit.cpp
-    src/common/contracts/GameUiBus.cpp
-)
-
-target_include_directories(snooker_contracts PUBLIC
-    ${CMAKE_SOURCE_DIR}/src/common
-    ${CMAKE_SOURCE_DIR}/src/common/contracts
-)
-
-target_link_libraries(snooker_contracts PUBLIC
-    snooker_common
-    Qt6::Core
 )
 
 # Model 层（依赖 Common + Qt Core）
@@ -53,7 +36,7 @@ target_link_libraries(snooker_model PUBLIC
     Qt6::Core
 )
 
-# ViewModel 层（依赖 Model + Contracts + Qt Core）
+# ViewModel 层（依赖 Model + Qt Core）
 add_library(snooker_viewmodel STATIC
     src/viewmodel/GameSessionViewModel.cpp
 )
@@ -65,13 +48,12 @@ target_include_directories(snooker_viewmodel PUBLIC
 )
 
 target_link_libraries(snooker_viewmodel PUBLIC
-    snooker_contracts
     snooker_model
     snooker_common
     Qt6::Core
 )
 
-# View 层（依赖 Contracts + Common + Qt Widgets，不依赖 ViewModel/Model）
+# View 层（依赖 Common + Qt Widgets，不依赖 ViewModel/Model）
 add_library(snooker_view STATIC
     src/view/GameView.cpp
     src/view/CueControl.cpp
@@ -83,16 +65,14 @@ add_library(snooker_view STATIC
 target_include_directories(snooker_view PUBLIC
     ${CMAKE_SOURCE_DIR}/src/view
     ${CMAKE_SOURCE_DIR}/src/common
-    ${CMAKE_SOURCE_DIR}/src/common/contracts
 )
 
 target_link_libraries(snooker_view PUBLIC
-    snooker_contracts
     snooker_common
     Qt6::Widgets
 )
 
-# 主可执行文件（App 层负责组装 MVVM）
+# 主可执行文件（App 层负责装配 MVVM）
 add_executable(Snooker2D
     src/main.cpp
     src/app/App.cpp
@@ -102,7 +82,6 @@ target_link_libraries(Snooker2D PRIVATE
     snooker_view
     snooker_viewmodel
     snooker_model
-    snooker_contracts
     snooker_common
     Qt6::Widgets
 )

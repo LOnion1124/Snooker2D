@@ -1,14 +1,12 @@
-#ifndef CUECONTROL_H
-#define CUECONTROL_H
+#pragma once
 
 #include <QWidget>
+#include "contracts/GameViewState.h"
 
 class QSlider;
 class QLabel;
 
 namespace Snooker2D {
-
-class GameUiBus;
 
 class CueControl : public QWidget {
     Q_OBJECT
@@ -17,13 +15,11 @@ public:
     explicit CueControl(QWidget* parent = nullptr);
     ~CueControl() override = default;
 
-    void bind(GameUiBus* bus);
+public slots:
+    void applyCueState(const CueViewState& state);
 
 private:
     void setupUI();
-    void applyCueState(const struct CueViewState& state);
-
-    GameUiBus* m_bus = nullptr;
 
     QSlider* m_angleSlider = nullptr;
     QSlider* m_powerSlider = nullptr;
@@ -32,5 +28,3 @@ private:
 };
 
 } // namespace Snooker2D
-
-#endif // CUECONTROL_H

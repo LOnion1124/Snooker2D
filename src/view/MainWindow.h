@@ -1,11 +1,9 @@
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+#pragma once
 
 #include <QMainWindow>
 
 namespace Snooker2D {
 
-class GameUiBus;
 class GameView;
 class CueControl;
 class ScoreBoard;
@@ -18,13 +16,14 @@ public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override;
 
-    // 由 App 层传入 Bus，绑定所有子 View
-    void bindAll(GameUiBus* bus);
+    GameView* gameView() const { return m_gameView; }
+    CueControl* cueControl() const { return m_cueControl; }
+    ScoreBoard* scoreBoard() const { return m_scoreBoard; }
+    GameInfoPanel* gameInfoPanel() const { return m_gameInfoPanel; }
 
 private:
     void setupUI();
 
-    // View 子控件
     GameView* m_gameView = nullptr;
     CueControl* m_cueControl = nullptr;
     ScoreBoard* m_scoreBoard = nullptr;
@@ -32,5 +31,3 @@ private:
 };
 
 } // namespace Snooker2D
-
-#endif // MAINWINDOW_H

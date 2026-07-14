@@ -1,13 +1,11 @@
-#ifndef SCOREBOARD_H
-#define SCOREBOARD_H
+#pragma once
 
 #include <QWidget>
+#include "contracts/GameViewState.h"
 
 class QLabel;
 
 namespace Snooker2D {
-
-class GameUiBus;
 
 class ScoreBoard : public QWidget {
     Q_OBJECT
@@ -16,13 +14,11 @@ public:
     explicit ScoreBoard(QWidget* parent = nullptr);
     ~ScoreBoard() override = default;
 
-    void bind(GameUiBus* bus);
+public slots:
+    void applyScoreState(const ScoreViewState& state);
 
 private:
     void setupUI();
-    void applyScoreState(const struct ScoreViewState& state);
-
-    GameUiBus* m_bus = nullptr;
 
     QLabel* m_titleLabel = nullptr;
     QLabel* m_player1NameLabel = nullptr;
@@ -36,5 +32,3 @@ private:
 };
 
 } // namespace Snooker2D
-
-#endif // SCOREBOARD_H

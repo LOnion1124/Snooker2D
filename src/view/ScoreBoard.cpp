@@ -1,6 +1,4 @@
 #include "ScoreBoard.h"
-#include "contracts/GameUiBus.h"
-#include "contracts/GameViewState.h"
 
 #include <QLabel>
 #include <QVBoxLayout>
@@ -8,20 +6,7 @@
 
 namespace Snooker2D {
 
-ScoreBoard::ScoreBoard(QWidget* parent)
-    : QWidget(parent)
-{
-    setupUI();
-}
-
-void ScoreBoard::bind(GameUiBus* bus) {
-    m_bus = bus;
-    if (!m_bus) return;
-
-    // 监听 ViewModel → View 状态推送
-    connect(m_bus, &GameUiBus::scoreStateChanged,
-            this, &ScoreBoard::applyScoreState);
-}
+ScoreBoard::ScoreBoard(QWidget* parent) : QWidget(parent) { setupUI(); }
 
 void ScoreBoard::applyScoreState(const ScoreViewState& state) {
     m_player1ScoreLabel->setText(QString::number(state.player1Score));

@@ -10,29 +10,12 @@ namespace Snooker2D {
 GameSessionViewModel::GameSessionViewModel(QObject* parent)
     : QObject(parent)
 {
-    // 创建 Bus
-    m_bus = new GameUiBus(this);
-
-    // 创建 Model
     m_gameState = new GameState(this);
 
-    // 创建模拟定时器
     m_simulationTimer = new QTimer(this);
-    m_simulationTimer->setInterval(1000 / 60); // ~60 FPS
+    m_simulationTimer->setInterval(1000 / 60);
     connect(m_simulationTimer, &QTimer::timeout,
             this, &GameSessionViewModel::onSimulationTick);
-
-    // View 请求 → 内部处理
-    connect(m_bus, &GameUiBus::cueAngleRequested,
-            this, &GameSessionViewModel::onCueAngleRequested);
-    connect(m_bus, &GameUiBus::cuePowerRequested,
-            this, &GameSessionViewModel::onCuePowerRequested);
-    connect(m_bus, &GameUiBus::shotAnimationFinished,
-            this, &GameSessionViewModel::onShotAnimationFinished);
-    connect(m_bus, &GameUiBus::whiteBallPlacementRequested,
-            this, &GameSessionViewModel::onWhiteBallPlacementRequested);
-    connect(m_bus, &GameUiBus::restartRequested,
-            this, &GameSessionViewModel::onRestartRequested);
 
     // Model 信号 → 状态推送
     connect(m_gameState, &GameState::phaseChanged,
@@ -62,9 +45,9 @@ void GameSessionViewModel::start() {
     m_gameState->startNewGame();
 }
 
-// --- View 请求处理 ---
+// ---- View 命令 ----
 
-void GameSessionViewModel::onCueAngleRequested(double angle) {
+void GameSessionViewModel::setAngle(double angle) {
     while (angle < 0.0) angle += 360.0;
     while (angle >= 360.0) angle -= 360.0;
     if (m_cueAngle != angle) {
@@ -74,7 +57,7 @@ void GameSessionViewModel::onCueAngleRequested(double angle) {
     }
 }
 
-void GameSessionViewModel::onCuePowerRequested(double power) {
+void GameSessionViewModel::setPower(double power) {
     if (power < 0.0) power = 0.0;
     if (power > 100.0) power = 100.0;
     if (m_cuePower != power) {
@@ -90,13 +73,13 @@ void GameSessionViewModel::onShotAnimationFinished() {
     }
 }
 
-void GameSessionViewModel::onWhiteBallPlacementRequested(double x, double y) {
+void GameSessionViewModel::placeWhiteBall(double x, double y) {
     if (m_gameState && m_gameState->isWhiteBallPlacing()) {
         m_gameState->placeWhiteBall(Vector2D(x, y));
     }
 }
 
-void GameSessionViewModel::onRestartRequested() {
+void GameSessionViewModel::restart() {
     if (!m_gameState) return;
     m_simulationTimer->stop();
     m_cueAngle = 0.0;
@@ -105,7 +88,7 @@ void GameSessionViewModel::onRestartRequested() {
     m_gameState->startNewGame();
 }
 
-// --- Model 信号回调 ---
+// ---- Model 信号回调 ----
 
 void GameSessionViewModel::onModelPhaseChanged(GamePhase /*phase*/) {
     pushAllStates();
@@ -152,7 +135,7 @@ void GameSessionViewModel::onPlayerScoreChanged(int /*score*/) {
     pushScoreState();
 }
 
-// --- 状态推送 ---
+// ---- 状态推送 ----
 
 void GameSessionViewModel::pushTableState() {
     TableViewState state;
@@ -172,7 +155,6 @@ void GameSessionViewModel::pushTableState() {
     state.cueAngle = m_cueAngle;
     state.cuePower = m_cuePower;
 
-    // 坐标系检测
     state.centeredCoordinates = false;
     for (const BallViewState& bvs : state.balls) {
         if (bvs.x < 0.0 || bvs.y < 0.0 ||
@@ -205,7 +187,7 @@ void GameSessionViewModel::pushTableState() {
         state.canShoot = state.canAim && whiteBallOnTable;
     }
 
-    emit m_bus->tableStateChanged(state);
+    emit tableStateReady(state);
 }
 
 void GameSessionViewModel::pushCueState() {
@@ -214,7 +196,7 @@ void GameSessionViewModel::pushCueState() {
     state.power = m_cuePower;
     state.englishX = m_englishX;
     state.englishY = m_englishY;
-    emit m_bus->cueStateChanged(state);
+    emit cueStateReady(state);
 }
 
 void GameSessionViewModel::pushScoreState() {
@@ -227,7 +209,7 @@ void GameSessionViewModel::pushScoreState() {
         state.foulMessage = m_foulMessage;
         state.statusMessage = m_statusMessage;
     }
-    emit m_bus->scoreStateChanged(state);
+    emit scoreStateReady(state);
 }
 
 void GameSessionViewModel::pushGameInfoState() {
@@ -242,7 +224,7 @@ void GameSessionViewModel::pushGameInfoState() {
         }
         state.showWhiteBallPlacementHint = m_gameState->isWhiteBallPlacing();
     }
-    emit m_bus->gameInfoStateChanged(state);
+    emit gameInfoStateReady(state);
 }
 
 void GameSessionViewModel::pushAllStates() {

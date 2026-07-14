@@ -1,15 +1,13 @@
-#ifndef GAMEINFOPANEL_H
-#define GAMEINFOPANEL_H
+#pragma once
 
 #include <QString>
 #include <QWidget>
+#include "contracts/GameViewState.h"
 
 class QLabel;
 class QPushButton;
 
 namespace Snooker2D {
-
-class GameUiBus;
 
 class GameInfoPanel : public QWidget {
     Q_OBJECT
@@ -18,14 +16,15 @@ public:
     explicit GameInfoPanel(QWidget* parent = nullptr);
     ~GameInfoPanel() override = default;
 
-    void bind(GameUiBus* bus);
+public slots:
+    void applyGameInfoState(const GameInfoViewState& state);
+
+signals:
+    void restartRequested();
 
 private:
     void setupUI();
-    void applyGameInfoState(const struct GameInfoViewState& state);
     QString phaseStyleSheet(int phaseKind) const;
-
-    GameUiBus* m_bus = nullptr;
 
     QLabel* m_playerIndicator = nullptr;
     QLabel* m_phaseLabel = nullptr;
@@ -35,5 +34,3 @@ private:
 };
 
 } // namespace Snooker2D
-
-#endif // GAMEINFOPANEL_H

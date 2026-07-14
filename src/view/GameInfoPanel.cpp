@@ -1,5 +1,4 @@
 #include "GameInfoPanel.h"
-#include "contracts/GameUiBus.h"
 #include "contracts/GameViewState.h"
 #include "../common/Types.h"
 
@@ -10,41 +9,21 @@
 
 namespace Snooker2D {
 
-GameInfoPanel::GameInfoPanel(QWidget* parent)
-    : QWidget(parent)
-{
-    setupUI();
-}
-
-void GameInfoPanel::bind(GameUiBus* bus) {
-    m_bus = bus;
-    if (!m_bus) {
-        applyGameInfoState(GameInfoViewState{});
-        return;
-    }
-
-    // 监听 ViewModel → View 状态推送
-    connect(m_bus, &GameUiBus::gameInfoStateChanged,
-            this, &GameInfoPanel::applyGameInfoState);
-}
+GameInfoPanel::GameInfoPanel(QWidget* parent) : QWidget(parent) { setupUI(); }
 
 void GameInfoPanel::applyGameInfoState(const GameInfoViewState& state) {
-    // 当前玩家
     m_playerIndicator->setText(state.currentPlayer > 0
         ? QStringLiteral("当前玩家: %1").arg(state.currentPlayer)
         : QStringLiteral("当前玩家: --"));
 
-    // 阶段文本
     const bool phaseEmpty = state.phaseText.isEmpty();
     m_phaseLabel->setText(phaseEmpty
         ? QStringLiteral("阶段: --")
         : QStringLiteral("阶段: %1").arg(state.phaseText));
     m_phaseLabel->setStyleSheet(phaseStyleSheet(state.phaseKind));
 
-    // 消息
     m_messageLabel->setText(state.message);
 
-    // 白球放置提示
     if (m_placementHintLabel) {
         m_placementHintLabel->setVisible(state.showWhiteBallPlacementHint);
     }
@@ -53,7 +32,6 @@ void GameInfoPanel::applyGameInfoState(const GameInfoViewState& state) {
 void GameInfoPanel::setupUI() {
     auto* layout = new QVBoxLayout(this);
 
-    // 当前玩家指示
     m_playerIndicator = new QLabel(QStringLiteral("当前玩家: --"), this);
     QFont playerFont = m_playerIndicator->font();
     playerFont.setPointSize(12);
@@ -61,14 +39,12 @@ void GameInfoPanel::setupUI() {
     m_playerIndicator->setFont(playerFont);
     m_playerIndicator->setAlignment(Qt::AlignCenter);
 
-    // 阶段提示
     m_phaseLabel = new QLabel(QStringLiteral("阶段: --"), this);
     QFont phaseFont = m_phaseLabel->font();
     phaseFont.setPointSize(11);
     m_phaseLabel->setFont(phaseFont);
     m_phaseLabel->setAlignment(Qt::AlignCenter);
 
-    // 白球放置提示
     m_placementHintLabel = new QLabel(QStringLiteral("点击 D 区放置白球"), this);
     QFont placementFont = m_placementHintLabel->font();
     placementFont.setPointSize(10);
@@ -85,12 +61,10 @@ void GameInfoPanel::setupUI() {
     ));
     m_placementHintLabel->hide();
 
-    // 其他消息
     m_messageLabel = new QLabel(QString(), this);
     m_messageLabel->setAlignment(Qt::AlignCenter);
     m_messageLabel->setWordWrap(true);
 
-    // 重启游戏
     m_restartButton = new QPushButton(QStringLiteral("重启游戏"), this);
     m_restartButton->setCursor(Qt::PointingHandCursor);
     m_restartButton->setStyleSheet(QStringLiteral(
@@ -105,13 +79,8 @@ void GameInfoPanel::setupUI() {
         "QPushButton:hover { background-color: #4f9a73; }"
         "QPushButton:pressed { background-color: #34694f; }"
     ));
-    // restart button 发 bus 请求信号
     connect(m_restartButton, &QPushButton::clicked,
-            this, [this]() {
-        if (m_bus) {
-            emit m_bus->restartRequested();
-        }
-    });
+            this, &GameInfoPanel::restartRequested);
 
     layout->addWidget(m_playerIndicator);
     layout->addWidget(m_phaseLabel);
@@ -124,18 +93,12 @@ void GameInfoPanel::setupUI() {
 
 QString GameInfoPanel::phaseStyleSheet(int phaseKind) const {
     switch (static_cast<GamePhase>(phaseKind)) {
-        case GamePhase::RedBall:
-            return QStringLiteral("color: #dc143c;");
-        case GamePhase::ColorBall:
-            return QStringLiteral("color: #4169e1;");
-        case GamePhase::Foul:
-            return QStringLiteral("color: #dc143c; font-weight: bold;");
-        case GamePhase::FreeBall:
-            return QStringLiteral("color: #ff9800;");
-        case GamePhase::GameOver:
-            return QStringLiteral("color: #d4af37; font-weight: bold;");
-        default:
-            return QString();
+        case GamePhase::RedBall:   return QStringLiteral("color: #dc143c;");
+        case GamePhase::ColorBall: return QStringLiteral("color: #4169e1;");
+        case GamePhase::Foul:      return QStringLiteral("color: #dc143c; font-weight: bold;");
+        case GamePhase::FreeBall:  return QStringLiteral("color: #ff9800;");
+        case GamePhase::GameOver:  return QStringLiteral("color: #d4af37; font-weight: bold;");
+        default: return QString();
     }
 }
 

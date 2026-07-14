@@ -1,5 +1,4 @@
 #include "GameView.h"
-#include "contracts/GameUiBus.h"
 #include "../common/Constants.h"
 
 #include <QPainter>
@@ -29,24 +28,6 @@ GameView::GameView(QWidget* parent)
             this, &GameView::updateShotAnimation);
 }
 
-void GameView::bind(GameUiBus* bus) {
-    if (m_bus) {
-        disconnect(m_bus, nullptr, this, nullptr);
-    }
-    m_bus = bus;
-    if (m_bus) {
-        // 监听 ViewModel → View 状态推送
-        connect(m_bus, &GameUiBus::tableStateChanged,
-                this, &GameView::applyTableState);
-        connect(m_bus, &GameUiBus::shotAnimationCancelled,
-                this, &GameView::cancelShotAnimation);
-
-        // 动画完成信号转发到 Bus
-        connect(this, &GameView::shotAnimationFinished,
-                m_bus, &GameUiBus::shotAnimationFinished);
-    }
-}
-
 void GameView::applyTableState(const TableViewState& state) {
     m_cachedBalls = state.balls;
     m_cachedCueAngle = state.cueAngle;
@@ -57,29 +38,27 @@ void GameView::applyTableState(const TableViewState& state) {
     m_cachedIsSimulating = state.isSimulating;
     m_centeredCoordinates = state.centeredCoordinates;
 
-    // 动画状态下不覆盖瞄准工具可见性
     if (!m_isShotAnimating && !m_hideAimingTools) {
         m_shotAnimationGap = cueGap();
     }
 
-    // 模拟结束且可以瞄准时恢复瞄准工具显示
     if (!state.isSimulating && state.canAim && m_hideAimingTools) {
         m_hideAimingTools = false;
     }
 
-    update(); // 触发 repaint
+    update();
 }
 
-void GameView::refresh() {
-    // refresh 由外部调用（如 resize），仅触发重绘
+void GameView::cancelShotAnimation() {
+    m_shotAnimationTimer->stop();
+    m_isShotAnimating = false;
+    m_hideAimingTools = false;
+    m_shotAnimationGap = cueGap();
     update();
 }
 
 void GameView::playShotAnimation() {
-    if (!m_bus || m_isShotAnimating || !aimingToolsVisible()) {
-        return;
-    }
-
+    if (m_isShotAnimating || !aimingToolsVisible()) return;
     m_isShotAnimating = true;
     m_hideAimingTools = false;
     m_shotAnimationGap = cueGap();
@@ -90,11 +69,7 @@ void GameView::playShotAnimation() {
 void GameView::paintEvent(QPaintEvent* /*event*/) {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
-
-    // 背景
     painter.fillRect(rect(), QColor(40, 40, 40));
-
-    // 绘制顺序：台面 → 白球放置提示 → 袋口 → 球 → 瞄准线 → 球杆
     drawTable(painter);
     drawWhiteBallPlacementGuide(painter);
     drawPockets(painter);
@@ -105,8 +80,7 @@ void GameView::paintEvent(QPaintEvent* /*event*/) {
 
 void GameView::resizeEvent(QResizeEvent* event) {
     QWidget::resizeEvent(event);
-    // 重新计算球桌绘制区域
-    double aspect = 2.0; // 球桌宽高比 2:1
+    double aspect = 2.0;
     QSize newSize = event->size();
     double viewW = newSize.width();
     double viewH = newSize.height();
@@ -149,55 +123,45 @@ void GameView::mouseMoveEvent(QMouseEvent* event) {
         event->accept();
         return;
     }
-
     QWidget::mouseMoveEvent(event);
 }
 
 void GameView::wheelEvent(QWheelEvent* event) {
-    if (!m_bus || m_isShotAnimating || !aimingToolsVisible()) {
+    if (m_isShotAnimating || !aimingToolsVisible()) {
         QWidget::wheelEvent(event);
         return;
     }
 
     const int wheelSteps = event->angleDelta().y() / 120;
-    if (wheelSteps == 0) {
-        QWidget::wheelEvent(event);
-        return;
-    }
+    if (wheelSteps == 0) { QWidget::wheelEvent(event); return; }
 
     const double newPower = m_cachedCuePower - wheelSteps * 5.0;
-    emit m_bus->cuePowerRequested(newPower);
+    emit powerChanged(newPower);
     event->accept();
 }
 
 // 绘制辅助函数
 
 void GameView::drawTable(QPainter& painter) {
-    // 台面（绿色）
-    painter.setBrush(QColor(34, 139, 34)); // ForestGreen
+    painter.setBrush(QColor(34, 139, 34));
     painter.setPen(Qt::NoPen);
     painter.drawRect(m_tableRect);
 
-    // 库边（棕色边框）
     painter.setPen(QPen(QColor(101, 67, 33), 6));
     painter.setBrush(Qt::NoBrush);
     painter.drawRect(m_tableRect.adjusted(-3, -3, 3, 3));
 }
 
 void GameView::drawWhiteBallPlacementGuide(QPainter& painter) {
-    if (!m_cachedIsPlacingWhiteBall || m_tableRect.isEmpty()) {
-        return;
-    }
+    if (!m_cachedIsPlacingWhiteBall || m_tableRect.isEmpty()) return;
 
     const double scaleX = m_tableRect.width() / TABLE_WIDTH;
     const double scaleY = m_tableRect.height() / TABLE_HEIGHT;
     const QPointF dCenter = gameToPixel(BAULK_LINE_X, 0.0);
     const double radiusX = D_RADIUS * scaleX;
     const double radiusY = D_RADIUS * scaleY;
-    const QRectF dRect(dCenter.x() - radiusX,
-                       dCenter.y() - radiusY,
-                       radiusX * 2.0,
-                       radiusY * 2.0);
+    const QRectF dRect(dCenter.x() - radiusX, dCenter.y() - radiusY,
+                       radiusX * 2.0, radiusY * 2.0);
 
     QPainterPath dZonePath;
     dZonePath.moveTo(dCenter.x(), dCenter.y() - radiusY);
@@ -209,7 +173,6 @@ void GameView::drawWhiteBallPlacementGuide(QPainter& painter) {
     painter.setPen(Qt::NoPen);
     painter.setBrush(QColor(0, 255, 0, 45));
     painter.drawPath(dZonePath);
-
     painter.setBrush(Qt::NoBrush);
     painter.setPen(QPen(QColor(180, 255, 180, 180), 2.0));
     painter.drawPath(dZonePath);
@@ -219,9 +182,7 @@ void GameView::drawWhiteBallPlacementGuide(QPainter& painter) {
 }
 
 void GameView::drawPockets(QPainter& painter) {
-    if (m_tableRect.isEmpty()) {
-        return;
-    }
+    if (m_tableRect.isEmpty()) return;
 
     const double scaleX = m_tableRect.width() / TABLE_WIDTH;
     const double scaleY = m_tableRect.height() / TABLE_HEIGHT;
@@ -231,29 +192,21 @@ void GameView::drawPockets(QPainter& painter) {
                        m_tableRect.top() + tableY * scaleY);
     };
     const std::array<QPointF, 6> pocketPositions = {
-        tableToPixel(0.0, 0.0),
-        tableToPixel(TABLE_WIDTH, 0.0),
-        tableToPixel(0.0, TABLE_HEIGHT),
-        tableToPixel(TABLE_WIDTH, TABLE_HEIGHT),
-        tableToPixel(TABLE_WIDTH / 2.0, 0.0),
-        tableToPixel(TABLE_WIDTH / 2.0, TABLE_HEIGHT)
+        tableToPixel(0.0, 0.0), tableToPixel(TABLE_WIDTH, 0.0),
+        tableToPixel(0.0, TABLE_HEIGHT), tableToPixel(TABLE_WIDTH, TABLE_HEIGHT),
+        tableToPixel(TABLE_WIDTH / 2.0, 0.0), tableToPixel(TABLE_WIDTH / 2.0, TABLE_HEIGHT)
     };
 
     painter.save();
     painter.setPen(Qt::NoPen);
     painter.setBrush(QColor(0, 0, 0));
-
-    for (const QPointF& center : pocketPositions) {
+    for (const QPointF& center : pocketPositions)
         painter.drawEllipse(center, pocketRadius, pocketRadius);
-    }
-
     painter.restore();
 }
 
 void GameView::drawBalls(QPainter& painter) {
-    if (m_tableRect.isEmpty()) {
-        return;
-    }
+    if (m_tableRect.isEmpty()) return;
 
     const double scaleX = m_tableRect.width() / TABLE_WIDTH;
     const double ballRadius = BALL_RADIUS * scaleX;
@@ -262,15 +215,12 @@ void GameView::drawBalls(QPainter& painter) {
     painter.setRenderHint(QPainter::Antialiasing, true);
 
     for (const BallViewState& ball : m_cachedBalls) {
-        if (!ball.onTable) {
-            continue;
-        }
+        if (!ball.onTable) continue;
 
         const QPointF center = gameToPixel(ball.x, ball.y);
         const QColor fillColor = ballColor(ball.type);
         const QColor penColor = ball.type == 0 ? QColor(130, 130, 130)
-                                              : (ball.type == 7 ? QColor(240, 240, 240)
-                                                               : fillColor.darker(140));
+            : (ball.type == 7 ? QColor(240, 240, 240) : fillColor.darker(140));
 
         painter.setPen(QPen(penColor, 1.5));
         painter.setBrush(fillColor);
@@ -278,24 +228,17 @@ void GameView::drawBalls(QPainter& painter) {
 
         const QPointF highlightCenter(center.x() - ballRadius * 0.35,
                                       center.y() - ballRadius * 0.35);
-        const double highlightRadius = ballRadius * 0.35;
         painter.setPen(Qt::NoPen);
         painter.setBrush(QColor(255, 255, 255, 120));
-        painter.drawEllipse(highlightCenter, highlightRadius, highlightRadius);
+        painter.drawEllipse(highlightCenter, ballRadius * 0.35, ballRadius * 0.35);
     }
-
     painter.restore();
 }
 
 void GameView::drawAimingGuide(QPainter& painter) {
-    if (!aimingToolsVisible()) {
-        return;
-    }
-
+    if (!aimingToolsVisible()) return;
     QPointF startPx;
-    if (!cueBallPixelPosition(&startPx)) {
-        return;
-    }
+    if (!cueBallPixelPosition(&startPx)) return;
 
     const double rad = m_cachedCueAngle * 3.14159265358979323846 / 180.0;
     const QPointF direction(std::cos(rad), -std::sin(rad));
@@ -308,14 +251,10 @@ void GameView::drawAimingGuide(QPainter& painter) {
 }
 
 void GameView::drawCue(QPainter& painter) {
-    if (!aimingToolsVisible() || m_tableRect.isEmpty()) {
-        return;
-    }
+    if (!aimingToolsVisible() || m_tableRect.isEmpty()) return;
 
     QPointF cueBallPosition;
-    if (!cueBallPixelPosition(&cueBallPosition)) {
-        return;
-    }
+    if (!cueBallPixelPosition(&cueBallPosition)) return;
 
     const double scaleX = m_tableRect.width() / TABLE_WIDTH;
     const double ballRadius = BALL_RADIUS * scaleX;
@@ -327,10 +266,8 @@ void GameView::drawCue(QPainter& painter) {
     painter.translate(cueBallPosition);
     painter.rotate(-m_cachedCueAngle);
 
-    const QRectF shaftRect(-(ballRadius + gap + cueLength),
-                           -cueWidth / 2.0,
-                           cueLength,
-                           cueWidth);
+    const QRectF shaftRect(-(ballRadius + gap + cueLength), -cueWidth / 2.0,
+                           cueLength, cueWidth);
     QLinearGradient shaftGradient(shaftRect.left(), 0.0, shaftRect.right(), 0.0);
     shaftGradient.setColorAt(0.0, QColor(92, 53, 24));
     shaftGradient.setColorAt(0.65, QColor(158, 100, 48));
@@ -340,10 +277,7 @@ void GameView::drawCue(QPainter& painter) {
     painter.setBrush(shaftGradient);
     painter.drawRect(shaftRect);
 
-    const QRectF tipRect(-(ballRadius + gap + 8.0),
-                         -cueWidth / 2.0,
-                         8.0,
-                         cueWidth);
+    const QRectF tipRect(-(ballRadius + gap + 8.0), -cueWidth / 2.0, 8.0, cueWidth);
     painter.setPen(Qt::NoPen);
     painter.setBrush(QColor(235, 218, 166));
     painter.drawRect(tipRect);
@@ -355,67 +289,50 @@ QPointF GameView::gameToPixel(double gameX, double gameY) const {
     const double scaleY = m_tableRect.height() / TABLE_HEIGHT;
     const double tableX = m_centeredCoordinates ? gameX + TABLE_WIDTH / 2.0 : gameX;
     const double tableY = m_centeredCoordinates ? gameY + TABLE_HEIGHT / 2.0 : gameY;
-
     return QPointF(m_tableRect.left() + tableX * scaleX,
                    m_tableRect.top() + tableY * scaleY);
 }
 
 QPointF GameView::pixelToGame(const QPointF& pixelPosition) const {
-    if (m_tableRect.isEmpty()) {
-        return QPointF();
-    }
-
+    if (m_tableRect.isEmpty()) return QPointF();
     const double scaleX = m_tableRect.width() / TABLE_WIDTH;
     const double scaleY = m_tableRect.height() / TABLE_HEIGHT;
     const double tableX = (pixelPosition.x() - m_tableRect.left()) / scaleX;
     const double tableY = (pixelPosition.y() - m_tableRect.top()) / scaleY;
     const double gameX = m_centeredCoordinates ? tableX - TABLE_WIDTH / 2.0 : tableX;
     const double gameY = m_centeredCoordinates ? tableY - TABLE_HEIGHT / 2.0 : tableY;
-
     return QPointF(gameX, gameY);
 }
 
 QColor GameView::ballColor(int ballType) const {
     switch (ballType) {
-        case 0: return QColor(255, 255, 255); // White
-        case 1: return QColor(220, 20, 60);   // Red
-        case 2: return QColor(255, 215, 0);   // Yellow
-        case 3: return QColor(0, 128, 0);     // Green
-        case 4: return QColor(139, 69, 19);   // Brown
-        case 5: return QColor(0, 0, 255);     // Blue
-        case 6: return QColor(255, 105, 180); // Pink
-        case 7: return QColor(30, 30, 30);    // Black
+        case 0: return QColor(255, 255, 255);
+        case 1: return QColor(220, 20, 60);
+        case 2: return QColor(255, 215, 0);
+        case 3: return QColor(0, 128, 0);
+        case 4: return QColor(139, 69, 19);
+        case 5: return QColor(0, 0, 255);
+        case 6: return QColor(255, 105, 180);
+        case 7: return QColor(30, 30, 30);
         default: return QColor(180, 180, 180);
     }
 }
 
 bool GameView::cueBallPixelPosition(QPointF* position) const {
-    if (!position) {
-        return false;
-    }
-
+    if (!position) return false;
     for (const BallViewState& ball : m_cachedBalls) {
         if (ball.type == 0 && ball.onTable) {
             *position = gameToPixel(ball.x, ball.y);
             return true;
         }
     }
-
     return false;
 }
 
 bool GameView::aimingToolsVisible() const {
-    if (m_cachedIsPlacingWhiteBall) {
-        return false;
-    }
-
-    if (m_hideAimingTools || m_isShotAnimating) {
-        return m_isShotAnimating;
-    }
-
-    return !m_cachedBalls.isEmpty()
-        && !m_tableRect.isEmpty()
-        && m_cachedCanAim;
+    if (m_cachedIsPlacingWhiteBall) return false;
+    if (m_hideAimingTools || m_isShotAnimating) return m_isShotAnimating;
+    return !m_cachedBalls.isEmpty() && !m_tableRect.isEmpty() && m_cachedCanAim;
 }
 
 bool GameView::isInWhiteBallPlacementZone(const QPointF& gamePosition) const {
@@ -426,60 +343,31 @@ bool GameView::isInWhiteBallPlacementZone(const QPointF& gamePosition) const {
 }
 
 void GameView::tryPlaceWhiteBall(const QPointF& mousePosition) {
-    if (!m_bus || m_tableRect.isEmpty() || !m_tableRect.contains(mousePosition)) {
-        return;
-    }
-
+    if (m_tableRect.isEmpty() || !m_tableRect.contains(mousePosition)) return;
     const QPointF gamePosition = pixelToGame(mousePosition);
-    if (!isInWhiteBallPlacementZone(gamePosition)) {
-        return;
-    }
-
-    emit m_bus->whiteBallPlacementRequested(gamePosition.x(), gamePosition.y());
+    if (!isInWhiteBallPlacementZone(gamePosition)) return;
+    emit whiteBallPlacementRequested(gamePosition.x(), gamePosition.y());
 }
 
 double GameView::cueGap() const {
-    const double powerRatio = qBound(0.0, m_cachedCuePower, 100.0) / 100.0;
-    return powerRatio * 72.0;
+    return qBound(0.0, m_cachedCuePower, 100.0) / 100.0 * 72.0;
 }
 
 void GameView::updateCueAngleFromMouse(const QPointF& mousePosition) {
-    if (!m_bus) {
-        return;
-    }
-
     QPointF cueBallPosition;
-    if (!cueBallPixelPosition(&cueBallPosition)) {
-        return;
-    }
+    if (!cueBallPixelPosition(&cueBallPosition)) return;
 
     const double dx = cueBallPosition.x() - mousePosition.x();
     const double dy = cueBallPosition.y() - mousePosition.y();
-    if (std::hypot(dx, dy) < 1.0) {
-        return;
-    }
+    if (std::hypot(dx, dy) < 1.0) return;
 
     double angle = std::atan2(-dy, dx) * 180.0 / 3.14159265358979323846;
-    if (angle < 0.0) {
-        angle += 360.0;
-    }
-
-    emit m_bus->cueAngleRequested(angle);
-}
-
-void GameView::cancelShotAnimation() {
-    m_shotAnimationTimer->stop();
-    m_isShotAnimating = false;
-    m_hideAimingTools = false;
-    m_shotAnimationGap = cueGap();
-    update();
+    if (angle < 0.0) angle += 360.0;
+    emit angleChanged(angle);
 }
 
 void GameView::updateShotAnimation() {
-    if (!m_isShotAnimating) {
-        m_shotAnimationTimer->stop();
-        return;
-    }
+    if (!m_isShotAnimating) { m_shotAnimationTimer->stop(); return; }
 
     m_shotAnimationGap = qMax(0.0, m_shotAnimationGap - 10.0);
     if (m_shotAnimationGap <= 0.0) {
@@ -490,7 +378,6 @@ void GameView::updateShotAnimation() {
         emit shotAnimationFinished();
         return;
     }
-
     update();
 }
 

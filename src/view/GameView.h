@@ -1,12 +1,10 @@
-#ifndef GAMEVIEW_H
-#define GAMEVIEW_H
+#pragma once
 
 #include <QColor>
 #include <QPointF>
 #include <QString>
 #include <QWidget>
 #include <QVector>
-
 #include "contracts/GameViewState.h"
 
 class QMouseEvent;
@@ -16,8 +14,6 @@ class QWheelEvent;
 
 namespace Snooker2D {
 
-class GameUiBus;
-
 class GameView : public QWidget {
     Q_OBJECT
 
@@ -25,12 +21,14 @@ public:
     explicit GameView(QWidget* parent = nullptr);
     ~GameView() override = default;
 
-    void bind(GameUiBus* bus);
-
 public slots:
-    void refresh();
+    void applyTableState(const TableViewState& state);
+    void cancelShotAnimation();
 
 signals:
+    void angleChanged(double angle);
+    void powerChanged(double power);
+    void whiteBallPlacementRequested(double x, double y);
     void shotAnimationFinished();
 
 protected:
@@ -56,16 +54,11 @@ private:
     void tryPlaceWhiteBall(const QPointF& mousePosition);
     double cueGap() const;
     void updateCueAngleFromMouse(const QPointF& mousePosition);
-    void cancelShotAnimation();
-    void updateShotAnimation();
     void playShotAnimation();
+    void updateShotAnimation();
 
-    void applyTableState(const TableViewState& state);
-
-    GameUiBus* m_bus = nullptr;
     QTimer* m_shotAnimationTimer = nullptr;
 
-    // 缓存的最新状态
     QVector<BallViewState> m_cachedBalls;
     double m_cachedCueAngle = 0.0;
     double m_cachedCuePower = 50.0;
@@ -75,7 +68,6 @@ private:
     bool m_cachedIsSimulating = false;
     bool m_centeredCoordinates = false;
 
-    // 动画状态
     bool m_isShotAnimating = false;
     bool m_hideAimingTools = false;
     double m_shotAnimationGap = 0.0;
@@ -83,5 +75,3 @@ private:
 };
 
 } // namespace Snooker2D
-
-#endif // GAMEVIEW_H
