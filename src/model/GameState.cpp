@@ -133,7 +133,17 @@ void GameState::updateSimulation() {
     ballPtrs.reserve(m_balls.size());
     for (auto& b : m_balls) ballPtrs.push_back(b.get());
 
-    m_physics->step(1.0 / 60.0, ballPtrs, *m_table);
+    // 在物理模拟中跟踪首次击中和碰库
+    BallType firstHitThisFrame = BallType::White;
+    bool cushionHitThisFrame = false;
+    m_physics->step(1.0 / 60.0, ballPtrs, *m_table,
+                    &firstHitThisFrame, &cushionHitThisFrame);
+
+    // 仅记录整个击球过程的首次击中（首帧之后再击中不再覆盖）
+    if (m_firstHitBall == BallType::White && firstHitThisFrame != BallType::White) {
+        m_firstHitBall = firstHitThisFrame;
+    }
+    m_anyBallHitCushion = m_anyBallHitCushion || cushionHitThisFrame;
 
     // 跟踪白球是否落袋
     if (!m_whitePocketed) {
@@ -166,14 +176,15 @@ Player* GameState::currentPlayer() const {
 void GameState::handlePostShot() {
     if (m_phase == GamePhase::GameOver) return;
 
-    // 计算本次击球新落袋的非白球
+    // 1. 计算本次击球新落袋的非白球
     int score = 0;
     bool anyBallPocketed = false;
     bool redPocketed = false;
     bool colorPocketed = false;
+    BallType firstPocketedColor = BallType::White;
 
     for (size_t i = 0; i < m_balls.size(); ++i) {
-        if (i < m_preShotPocketed.size() && m_preShotPocketed[i]) continue; // 之前就已落袋
+        if (i < m_preShotPocketed.size() && m_preShotPocketed[i]) continue;
         if (!m_balls[i]->isPocketed()) continue;
 
         anyBallPocketed = true;
@@ -186,30 +197,145 @@ void GameState::handlePostShot() {
         }
         if (isColorBall(type)) {
             colorPocketed = true;
+            if (firstPocketedColor == BallType::White) {
+                firstPocketedColor = type;
+            }
         }
     }
 
-    // 犯规（白球落袋）→ 对手得分，切换回合，进入白球放置
+    // 2. 确定当前应击球种
+    BallType requiredType = BallType::Red;
+    if (m_phase == GamePhase::ColorBall) {
+        if (allRedsPocketed()) {
+            // TODO: 最终彩球阶段按升序（黄→绿→棕→蓝→粉→黑）
+            requiredType = BallType::Yellow;
+        }
+        // 红球还在时：交替阶段，"任意彩球" 合法，另做处理
+    }
+
+    // 3. 构建 Ball* 列表供 Rules 使用
+    std::vector<Ball*> ballPtrs;
+    ballPtrs.reserve(m_balls.size());
+    for (auto& b : m_balls) ballPtrs.push_back(b.get());
+    Ball* whiteBall = nullptr;
+    for (auto* b : ballPtrs) {
+        if (b->type() == BallType::White && !b->isPocketed()) {
+            whiteBall = b;
+            break;
+        }
+    }
+
+    // 4. 犯规检测
+    bool isFoul = false;
+    FoulResult foulResult;
+
+    // 白球落袋 → 犯规
     if (m_whitePocketed) {
-        // TODO: 完整犯规判罚复用 Rules 模块
-        PlayerId opponent = oppositePlayer(m_currentPlayerId);
-        Player* opponentPlayer = (opponent == PlayerId::Player1) ? m_player1.get() : m_player2.get();
-        opponentPlayer->addScore(4); // 最低罚 4 分
+        foulResult = m_rules->checkFoul(ballPtrs, whiteBall, m_firstHitBall,
+                                         m_anyBallHitCushion, true, requiredType);
+        isFoul = true;
+    }
+    // 空杆（未击中任何球），且无任何球落袋
+    else if (m_firstHitBall == BallType::White && !anyBallPocketed) {
+        foulResult.isFoul = true;
+        foulResult.type = FoulType::MissedAll;
+        foulResult.penaltyPoints = m_rules->calculatePenalty(FoulType::MissedAll, requiredType);
+        foulResult.description = QStringLiteral("空杆！罚 %1 分").arg(foulResult.penaltyPoints);
+        isFoul = true;
+    }
+    // 先击中错误球（含交替阶段特殊处理）
+    else {
+        bool wrongBall = false;
+        BallType foulBallType = m_firstHitBall;
+
+        if (m_firstHitBall == BallType::White) {
+            // 白球为首中但进了球（上面空杆分支已排除无进球情况）
+            wrongBall = false;
+        } else if (m_phase == GamePhase::ColorBall && !allRedsPocketed()) {
+            // 交替阶段：红球不合法，彩球合法
+            if (m_firstHitBall == BallType::Red) {
+                wrongBall = true;
+            } else if (isColorBall(m_firstHitBall)) {
+                wrongBall = false; // 任意彩球合法
+            } else {
+                wrongBall = true;
+            }
+        } else if (m_firstHitBall != requiredType) {
+            wrongBall = true;
+        }
+
+        if (wrongBall) {
+            foulResult.isFoul = true;
+            foulResult.type = FoulType::WrongBallFirst;
+            foulResult.penaltyPoints = m_rules->calculatePenalty(FoulType::WrongBallFirst, foulBallType);
+            foulResult.description = QStringLiteral("先击中错误球！罚 %1 分").arg(foulResult.penaltyPoints);
+            isFoul = true;
+        }
+    }
+
+    // 红球阶段彩球落袋 → 犯规（即使先碰了红球）
+    if (!isFoul && m_phase == GamePhase::RedBall && colorPocketed) {
+        foulResult.isFoul = true;
+        foulResult.type = FoulType::WrongBallFirst;
+        foulResult.penaltyPoints = m_rules->calculatePenalty(FoulType::WrongBallFirst, firstPocketedColor);
+        foulResult.description = QStringLiteral("彩球落袋！罚 %1 分").arg(foulResult.penaltyPoints);
+        isFoul = true;
+    }
+    // 无球碰库（有进球时豁免）
+    if (!isFoul && !anyBallPocketed && !m_anyBallHitCushion) {
+        foulResult.isFoul = true;
+        foulResult.type = FoulType::NoBallHitCushion;
+        foulResult.penaltyPoints = m_rules->calculatePenalty(FoulType::NoBallHitCushion, m_firstHitBall);
+        foulResult.description = QStringLiteral("无球碰库！罚 %1 分").arg(foulResult.penaltyPoints);
+        isFoul = true;
+    }
+
+    // 5. 处理犯规
+    if (isFoul) {
+        PlayerId opponentId = oppositePlayer(m_currentPlayerId);
+        Player* opponent = (opponentId == PlayerId::Player1) ? m_player1.get() : m_player2.get();
+        opponent->addScore(foulResult.penaltyPoints);
+        emit foulOccurred(foulResult);
+
+        GamePhase preFoulPhase = m_phase;
         m_phase = GamePhase::Foul;
         emit phaseChanged(m_phase);
         switchTurn();
-        m_whiteBallPlacing = true;
-        emit whiteBallPlacingStarted();
+
+        // 白球落袋 → 进入放置模式
+        if (m_whitePocketed) {
+            m_whiteBallPlacing = true;
+            emit whiteBallPlacingStarted();
+        }
+
+        // 犯规时复位新落袋的彩球（红球保留）
+        if (!allRedsPocketed()) {
+            for (size_t i = 0; i < m_balls.size(); ++i) {
+                if (i < m_preShotPocketed.size() && m_preShotPocketed[i]) continue;
+                if (!m_balls[i]->isPocketed()) continue;
+                if (m_balls[i]->type() == BallType::White) continue;
+                if (isColorBall(m_balls[i]->type())) {
+                    m_balls[i]->respot();
+                }
+            }
+        }
+
+        // 非白球落袋犯规 → 恢复犯规前的阶段（Foul 是短暂的通知状态）
+        if (!m_whitePocketed) {
+            m_phase = preFoulPhase;
+            emit phaseChanged(m_phase);
+        }
+        // 白球落袋犯规 → 由 placeWhiteBall() 恢复阶段
         return;
     }
 
-    // 进球加分
+    // 6. 未犯规 — 正常计分
     if (score > 0) {
         currentPlayer()->addScore(score);
     }
 
-    // 红球未清空时，复位新落袋的彩球（斯诺克规则：彩球需回位）
-    if (!allRedsPocketed()) {
+    // 红球未清空时，复位新落袋的彩球（交替阶段：彩球得分后回位）
+    if (colorPocketed && !allRedsPocketed()) {
         for (size_t i = 0; i < m_balls.size(); ++i) {
             if (i < m_preShotPocketed.size() && m_preShotPocketed[i]) continue;
             if (!m_balls[i]->isPocketed()) continue;
@@ -220,31 +346,23 @@ void GameState::handlePostShot() {
         }
     }
 
-    // 阶段转换
+    // 7. 阶段转换
     if (m_phase == GamePhase::RedBall) {
-        // 红球阶段：进红球 → 下一杆击彩球；进彩球 → 犯规（暂简单切换回合）
         if (redPocketed) {
-            if (allRedsPocketed()) {
-                // 最后一颗红球已进，永久进入彩球阶段
-                m_phase = GamePhase::ColorBall;
-                emit phaseChanged(m_phase);
-            } else {
-                // 还有红球，下一杆必须击彩球（交替）
-                m_phase = GamePhase::ColorBall;
-                emit phaseChanged(m_phase);
-            }
+            m_phase = GamePhase::ColorBall;
+            emit phaseChanged(m_phase);
         }
     } else if (m_phase == GamePhase::ColorBall) {
-        // 彩球阶段：进了彩球，若红球还有则回到红球阶段
+        // 交替阶段（红球还有）：进彩球 → 回红球阶段
         if (colorPocketed && !allRedsPocketed()) {
             m_phase = GamePhase::RedBall;
             emit phaseChanged(m_phase);
         }
-        // 红球清空后一直留在彩球阶段
+        // 红球清空后：留在彩球阶段，彩球永久落袋
     }
 
-    // 无进球 → 切换回合
-    if (score == 0 && !m_whitePocketed) {
+    // 8. 无进球 → 切换回合（犯规分支已 return，不会走到这里）
+    if (score == 0) {
         switchTurn();
     }
 

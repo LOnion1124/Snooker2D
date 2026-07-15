@@ -14,15 +14,16 @@ Physics::Physics(QObject* parent)
 {
 }
 
-void Physics::step(double deltaTime, std::vector<Ball*>& balls, const Table& table) {
+void Physics::step(double deltaTime, std::vector<Ball*>& balls, const Table& table,
+                   BallType* outFirstHit, bool* outCushionHit) {
     // 1. 移动球
     moveBalls(balls, deltaTime);
 
-    // 2. 检测球-球碰撞并处理
-    checkBallBallCollisions(balls);
+    // 2. 检测球-球碰撞并处理（同时跟踪白球首次击中）
+    checkBallBallCollisions(balls, outFirstHit);
 
-    // 3. 检测球-库边碰撞并处理
-    checkBallCushionCollisions(balls, table);
+    // 3. 检测球-库边碰撞并处理（同时跟踪碰库事件）
+    checkBallCushionCollisions(balls, table, outCushionHit);
 
     // 4. 检测袋口
     checkPocketDetection(balls, table);
@@ -78,7 +79,7 @@ void Physics::moveBalls(std::vector<Ball*>& balls, double deltaTime) {
     }
 }
 
-void Physics::checkBallBallCollisions(std::vector<Ball*>& balls) {
+void Physics::checkBallBallCollisions(std::vector<Ball*>& balls, BallType* ioFirstHit) {
     size_t n = balls.size();
     for (size_t i = 0; i < n; ++i) {
         if (balls[i]->isPocketed()) continue;
@@ -86,13 +87,13 @@ void Physics::checkBallBallCollisions(std::vector<Ball*>& balls) {
             if (balls[j]->isPocketed()) continue;
             if (MathUtils::circleOverlap(balls[i]->position(), BALL_RADIUS,
                                          balls[j]->position(), BALL_RADIUS)) {
-                resolveBallCollision(*balls[i], *balls[j]);
+                resolveBallCollision(*balls[i], *balls[j], ioFirstHit);
             }
         }
     }
 }
 
-void Physics::checkBallCushionCollisions(std::vector<Ball*>& balls, const Table& table) {
+void Physics::checkBallCushionCollisions(std::vector<Ball*>& balls, const Table& table, bool* outCushionHit) {
     for (auto* ball : balls) {
         if (ball->isPocketed()) continue;
         for (const auto& cushion : table.cushions()) {
@@ -100,6 +101,7 @@ void Physics::checkBallCushionCollisions(std::vector<Ball*>& balls, const Table&
                 ball->position(), cushion.p1, cushion.p2);
             double dist = MathUtils::distance(ball->position(), closest);
             if (dist < BALL_RADIUS) {
+                if (outCushionHit) *outCushionHit = true;
                 resolveCushionCollision(*ball, closest, dist);
             }
         }
@@ -119,7 +121,7 @@ void Physics::checkPocketDetection(std::vector<Ball*>& balls, const Table& table
     }
 }
 
-void Physics::resolveBallCollision(Ball& a, Ball& b) {
+void Physics::resolveBallCollision(Ball& a, Ball& b, BallType* ioFirstHit) {
     Vector2D normal = b.position() - a.position();
     double dist = normal.length();
     double overlap = 2.0 * BALL_RADIUS - dist;
@@ -150,6 +152,15 @@ void Physics::resolveBallCollision(Ball& a, Ball& b) {
     Vector2D impulse = normal * impulseScalar;
     a.setVelocity(a.velocity() + impulse);
     b.setVelocity(b.velocity() - impulse);
+
+    // 跟踪白球首次击中的球
+    if (ioFirstHit && *ioFirstHit == BallType::White) {
+        if (a.type() == BallType::White && b.type() != BallType::White) {
+            *ioFirstHit = b.type();
+        } else if (b.type() == BallType::White && a.type() != BallType::White) {
+            *ioFirstHit = a.type();
+        }
+    }
 }
 
 void Physics::resolveCushionCollision(Ball& ball, const Vector2D& closestPoint, double distance) {
