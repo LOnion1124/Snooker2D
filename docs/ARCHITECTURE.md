@@ -1,4 +1,4 @@
-# MVVM 最终架构文档
+# 项目架构文档
 
 本文档记录 Snooker2D 项目经过三轮重构后的最终 MVVM 架构。
 
@@ -98,16 +98,28 @@ int App::run(int argc, char* argv[]) {
     // ViewModel → View（属性绑定）
     QObject::connect(&sessionViewModel, &GameSessionViewModel::tableStateReady,
             gameView, &GameView::applyTableState);
+    QObject::connect(&sessionViewModel, &GameSessionViewModel::cueStateReady,
+            cueControl, &CueControl::applyCueState);
     QObject::connect(&sessionViewModel, &GameSessionViewModel::scoreStateReady,
             scoreBoard, &ScoreBoard::applyScoreState);
-    // ... 共 5 条
+    QObject::connect(&sessionViewModel, &GameSessionViewModel::gameInfoStateReady,
+            gameInfoPanel, &GameInfoPanel::applyGameInfoState);
+    QObject::connect(&sessionViewModel, &GameSessionViewModel::shotAnimationCancelled,
+            gameView, &GameView::cancelShotAnimation);
+    // 共 5 条
 
     // View → ViewModel（命令绑定）
     QObject::connect(gameView, &GameView::angleChanged,
             &sessionViewModel, &GameSessionViewModel::setAngle);
+    QObject::connect(gameView, &GameView::powerChanged,
+            &sessionViewModel, &GameSessionViewModel::setPower);
     QObject::connect(gameView, &GameView::shotAnimationFinished,
             &sessionViewModel, &GameSessionViewModel::onShotAnimationFinished);
-    // ... 共 5 条
+    QObject::connect(gameView, &GameView::whiteBallPlacementRequested,
+            &sessionViewModel, &GameSessionViewModel::placeWhiteBall);
+    QObject::connect(gameInfoPanel, &GameInfoPanel::restartRequested,
+            &sessionViewModel, &GameSessionViewModel::restart);
+    // 共 5 条
 
     sessionViewModel.start();
     mainWindow.show();
@@ -136,6 +148,7 @@ signals:
     void cueStateReady(const CueViewState& state);
     void scoreStateReady(const ScoreViewState& state);
     void gameInfoStateReady(const GameInfoViewState& state);
+    void shotAnimationCancelled();
 
 private slots:
     // Model 信号回调（构造函数中 connect）
@@ -309,6 +322,6 @@ Model→ViewModel 的 connect 留在 GameSessionViewModel 构造函数。因为 
 |----|------|:--:|
 | Common | `Constants.h` `Types.h` `MathUtils.h/.cpp` `contracts/GameViewState.h` | — |
 | Model | `Ball` `Table` `Physics` `GameState` `Player` `Rules` | — |
-| ViewModel | `GameSessionViewModel.h/.cpp` | 267 |
+| ViewModel | `GameSessionViewModel.h/.cpp` | 317 |
 | View | `GameView` `CueControl` `ScoreBoard` `GameInfoPanel` `MainWindow` | — |
-| App | `App.h/.cpp` `main.cpp` | 67 |
+| App | `App.h/.cpp` `main.cpp` | 74 |

@@ -17,6 +17,18 @@
 - 创建 docs/ 文档结构：DESIGN.md / TEST.md / REPORTS / NOTES.md
 - 准备中期报告材料
 
+## 2026-07-16
+
+- docs/ 目录整理：删除 DESIGN.md / MVVM_REFACTOR_GUIDE.md / app/* / common/design.md / B.md / TEST.md
+- MVVM_FINAL_ARCHITECTURE.md → ARCHITECTURE.md，内部标题同步
+- MODEL_VIEWMODEL.md 修正行数
+- NOTES.md 补充近期记录
+
+## 2026-07-14
+
+- 中期报告最终定稿（合并为单份 .tex，8 页 PDF），含全部截图
+- 推送中期报告至远端
+
 ## 2026-07-13
 
 - B 推送物理引擎（球-球碰撞、球-库边碰撞、摩擦力），编译通过（22/22）
@@ -50,3 +62,7 @@
 | 07-13 | MainWindow 瘦身：删除 setupBindings()、9 条 connect，仅剩 Bus 注入 | App 层无业务逻辑 |
 | 07-13 | 代码风格统一：去除 ASCII 分隔线注释（CMakeLists + 6 源文件） | 净减 78 行 |
 | 07-13 | 更新 docs/ 全部架构文档，反映 contracts 层和新的依赖边界 | 文档与代码一致 |
+| 07-14 | 中期报告定稿，合并为单份 .tex（8 页 PDF） | 提交 380362d |
+| 07-15 | 最终架构文档与源码逐项核对，修正 4 处差异（信号/行数） | MVVM_FINAL_ARCHITECTURE.md |
+| 07-16 | docs/ 目录清理：删 7 份过时/冗余文档，重命名架构文档 | 16→7 份 |
+| 07-16 | 补充 NOTES.md 近期记录 | 本文 |

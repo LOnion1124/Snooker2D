@@ -75,7 +75,7 @@ Model 与 View 之间唯一的桥梁。将 Model 的 `std::vector<unique_ptr<Bal
 
 ### 唯一类
 
-`GameSessionViewModel`（`src/viewmodel/GameSessionViewModel.h/.cpp`，约 250 行）
+`GameSessionViewModel`（`src/viewmodel/GameSessionViewModel.h/.cpp`，约 317 行）
 
 ### 信号架构
 
