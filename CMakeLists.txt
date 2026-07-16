@@ -65,6 +65,7 @@ add_library(snooker_view STATIC
     src/view/ScoreBoard.cpp
     src/view/GameInfoPanel.cpp
     src/view/GameControlPanel.cpp
+    src/view/UiLanguage.cpp
     src/view/MainWindow.cpp
 )
 

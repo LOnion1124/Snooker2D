@@ -2,6 +2,7 @@
 
 #include <QWidget>
 #include "contracts/GameViewState.h"
+#include "UiLanguage.h"
 
 class QLabel;
 class QTimer;
@@ -17,12 +18,14 @@ public:
 
 public slots:
     void applyScoreState(const ScoreViewState& state);
+    void setLanguage(UiLanguage language);
 
 private slots:
     void onFoulTimerTimeout();
 
 private:
     void setupUI();
+    void refreshTexts();
 
     QLabel* m_titleLabel = nullptr;
     QLabel* m_player1NameLabel = nullptr;
@@ -34,6 +37,10 @@ private:
     QLabel* m_foulLabel = nullptr;
     QLabel* m_statusLabel = nullptr;
     QTimer* m_foulTimer = nullptr;
+    ScoreViewState m_state;
+    UiLanguage m_language = UiLanguage::Chinese;
+    bool m_hasState = false;
+    bool m_foulVisible = false;
 };
 
 } // namespace Snooker2D

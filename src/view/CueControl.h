@@ -2,6 +2,7 @@
 
 #include <QWidget>
 #include "contracts/GameViewState.h"
+#include "UiLanguage.h"
 
 class QSlider;
 class QLabel;
@@ -17,14 +18,18 @@ public:
 
 public slots:
     void applyCueState(const CueViewState& state);
+    void setLanguage(UiLanguage language);
 
 private:
     void setupUI();
+    void refreshTexts();
 
     QSlider* m_angleSlider = nullptr;
     QSlider* m_powerSlider = nullptr;
     QLabel* m_angleLabel = nullptr;
     QLabel* m_powerLabel = nullptr;
+    CueViewState m_state;
+    UiLanguage m_language = UiLanguage::Chinese;
 };
 
 } // namespace Snooker2D
