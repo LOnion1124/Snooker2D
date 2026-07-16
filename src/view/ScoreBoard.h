@@ -4,6 +4,7 @@
 #include "contracts/GameViewState.h"
 
 class QLabel;
+class QTimer;
 
 namespace Snooker2D {
 
@@ -17,6 +18,9 @@ public:
 public slots:
     void applyScoreState(const ScoreViewState& state);
 
+private slots:
+    void onFoulTimerTimeout();
+
 private:
     void setupUI();
 
@@ -29,6 +33,7 @@ private:
     QLabel* m_player2BreakLabel = nullptr;
     QLabel* m_foulLabel = nullptr;
     QLabel* m_statusLabel = nullptr;
+    QTimer* m_foulTimer = nullptr;
 };
 
 } // namespace Snooker2D

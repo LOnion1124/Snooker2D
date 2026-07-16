@@ -3,10 +3,19 @@
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QFont>
+#include <QTimer>
 
 namespace Snooker2D {
 
-ScoreBoard::ScoreBoard(QWidget* parent) : QWidget(parent) { setupUI(); }
+ScoreBoard::ScoreBoard(QWidget* parent) : QWidget(parent) {
+    setupUI();
+
+    // 犯规提示 3 秒后自动隐藏
+    m_foulTimer = new QTimer(this);
+    m_foulTimer->setSingleShot(true);
+    m_foulTimer->setInterval(3000);
+    connect(m_foulTimer, &QTimer::timeout, this, &ScoreBoard::onFoulTimerTimeout);
+}
 
 void ScoreBoard::applyScoreState(const ScoreViewState& state) {
     m_player1ScoreLabel->setText(QString::number(state.player1Score));
@@ -15,6 +24,20 @@ void ScoreBoard::applyScoreState(const ScoreViewState& state) {
     m_player2BreakLabel->setText(QString("单杆: %1").arg(state.player2Break));
     m_foulLabel->setText(state.foulMessage);
     m_statusLabel->setText(state.statusMessage);
+
+    // 有犯规消息时拼上中文犯规者名，启动 3 秒隐藏定时器
+    if (!state.foulMessage.isEmpty()) {
+        const QString playerName = (state.foulingPlayer == 2)
+            ? QStringLiteral("玩家 2")
+            : QStringLiteral("玩家 1");
+        m_foulLabel->setText(
+            QStringLiteral("%1 犯规: %2").arg(playerName, state.foulMessage));
+        m_foulTimer->start();
+    }
+}
+
+void ScoreBoard::onFoulTimerTimeout() {
+    m_foulLabel->clear();
 }
 
 void ScoreBoard::setupUI() {

@@ -40,6 +40,7 @@ struct ScoreViewState {
     int     player2Score = 0;
     int     player1Break = 0;
     int     player2Break = 0;
+    int     foulingPlayer = 0;  // 犯规者编号: 0=无, 1=玩家1, 2=玩家2
     QString foulMessage;
     QString statusMessage;
 };

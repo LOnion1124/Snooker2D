@@ -63,6 +63,7 @@ private:
 
     QString m_foulMessage;
     QString m_statusMessage;
+    int     m_foulingPlayer = 0;
 };
 
 } // namespace Snooker2D

@@ -85,6 +85,7 @@ void GameSessionViewModel::restart() {
     m_cueAngle = 0.0;
     m_cuePower = 50.0;
     m_foulMessage.clear();
+    m_foulingPlayer = 0;
     m_gameState->startNewGame();
 }
 
@@ -100,6 +101,8 @@ void GameSessionViewModel::onModelTurnChanged() {
 
 void GameSessionViewModel::onModelSimulationStarted() {
     m_simulationTimer->start();
+    m_foulMessage.clear();
+    m_foulingPlayer = 0;
     pushAllStates();
 }
 
@@ -118,7 +121,11 @@ void GameSessionViewModel::onModelSimulationFinished() {
 }
 
 void GameSessionViewModel::onModelFoulOccurred(const FoulResult& result) {
+    // foulMessage 只存原始描述，犯规者编号由 View 层映射为中文名
     m_foulMessage = result.description;
+    if (m_gameState && m_gameState->currentPlayer()) {
+        m_foulingPlayer = (m_gameState->currentPlayer() == m_gameState->player1()) ? 1 : 2;
+    }
     pushScoreState();
     pushGameInfoState();
 }
@@ -206,6 +213,7 @@ void GameSessionViewModel::pushScoreState() {
         state.player2Score = m_gameState->player2()->score();
         state.player1Break = m_gameState->player1()->currentBreak();
         state.player2Break = m_gameState->player2()->currentBreak();
+        state.foulingPlayer = m_foulingPlayer;
         state.foulMessage = m_foulMessage;
         state.statusMessage = m_statusMessage;
     }
