@@ -5,7 +5,6 @@
 #include "contracts/GameViewState.h"
 
 class QLabel;
-class QPushButton;
 
 namespace Snooker2D {
 
@@ -19,9 +18,6 @@ public:
 public slots:
     void applyGameInfoState(const GameInfoViewState& state);
 
-signals:
-    void restartRequested();
-
 private:
     void setupUI();
     QString phaseStyleSheet(int phaseKind) const;
@@ -30,7 +26,6 @@ private:
     QLabel* m_phaseLabel = nullptr;
     QLabel* m_placementHintLabel = nullptr;
     QLabel* m_messageLabel = nullptr;
-    QPushButton* m_restartButton = nullptr;
 };
 
 } // namespace Snooker2D

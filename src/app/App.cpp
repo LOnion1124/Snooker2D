@@ -6,6 +6,7 @@
 #include "CueControl.h"
 #include "ScoreBoard.h"
 #include "GameInfoPanel.h"
+#include "GameControlPanel.h"
 
 namespace Snooker2D {
 
@@ -20,6 +21,7 @@ int App::run(int argc, char* argv[])
     CueControl* cueControl = mainWindow.cueControl();
     ScoreBoard* scoreBoard = mainWindow.scoreBoard();
     GameInfoPanel* gameInfoPanel = mainWindow.gameInfoPanel();
+    GameControlPanel* gameControlPanel = mainWindow.gameControlPanel();
 
     // ViewModel → View（属性绑定）
 
@@ -44,7 +46,7 @@ int App::run(int argc, char* argv[])
             &sessionViewModel, &GameSessionViewModel::onShotAnimationFinished);
     QObject::connect(gameView, &GameView::whiteBallPlacementRequested,
             &sessionViewModel, &GameSessionViewModel::placeWhiteBall);
-    QObject::connect(gameInfoPanel, &GameInfoPanel::restartRequested,
+    QObject::connect(gameControlPanel, &GameControlPanel::restartRequested,
             &sessionViewModel, &GameSessionViewModel::restart);
 
     // 启动

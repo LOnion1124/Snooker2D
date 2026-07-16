@@ -8,6 +8,7 @@ class GameView;
 class CueControl;
 class ScoreBoard;
 class GameInfoPanel;
+class GameControlPanel;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -20,6 +21,7 @@ public:
     CueControl* cueControl() const { return m_cueControl; }
     ScoreBoard* scoreBoard() const { return m_scoreBoard; }
     GameInfoPanel* gameInfoPanel() const { return m_gameInfoPanel; }
+    GameControlPanel* gameControlPanel() const { return m_gameControlPanel; }
 
 private:
     void setupUI();
@@ -28,6 +30,7 @@ private:
     CueControl* m_cueControl = nullptr;
     ScoreBoard* m_scoreBoard = nullptr;
     GameInfoPanel* m_gameInfoPanel = nullptr;
+    GameControlPanel* m_gameControlPanel = nullptr;
 };
 
 } // namespace Snooker2D

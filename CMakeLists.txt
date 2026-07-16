@@ -16,6 +16,11 @@ target_include_directories(snooker_common PUBLIC
     ${CMAKE_SOURCE_DIR}/src/common
 )
 
+# Common Contracts 部分（依赖 Qt Core）
+target_link_libraries(snooker_common PUBLIC
+    Qt6::Core
+)
+
 # Model 层（依赖 Common + Qt Core）
 add_library(snooker_model STATIC
     src/model/Ball.cpp
@@ -59,6 +64,7 @@ add_library(snooker_view STATIC
     src/view/CueControl.cpp
     src/view/ScoreBoard.cpp
     src/view/GameInfoPanel.cpp
+    src/view/GameControlPanel.cpp
     src/view/MainWindow.cpp
 )
 

@@ -4,6 +4,7 @@
 #include "CueControl.h"
 #include "ScoreBoard.h"
 #include "GameInfoPanel.h"
+#include "GameControlPanel.h"
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -32,9 +33,12 @@ void MainWindow::setupUI() {
     auto* rightLayout = new QVBoxLayout();
     m_scoreBoard = new ScoreBoard(this);
     m_gameInfoPanel = new GameInfoPanel(this);
+    m_gameControlPanel = new GameControlPanel(this);
+
     rightLayout->addWidget(m_scoreBoard);
     rightLayout->addWidget(m_gameInfoPanel);
     rightLayout->addStretch();
+    rightLayout->addWidget(m_gameControlPanel);
 
     mainLayout->addLayout(leftLayout, 3);
     mainLayout->addLayout(rightLayout, 1);
