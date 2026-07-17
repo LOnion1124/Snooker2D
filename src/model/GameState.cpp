@@ -297,7 +297,6 @@ void GameState::handlePostShot() {
         opponent->addScore(foulResult.penaltyPoints);
         emit foulOccurred(foulResult);
 
-        GamePhase preFoulPhase = m_phase;
         m_phase = GamePhase::Foul;
         emit phaseChanged(m_phase);
         switchTurn();
@@ -320,9 +319,9 @@ void GameState::handlePostShot() {
             }
         }
 
-        // 非白球落袋犯规 → 恢复犯规前的阶段（Foul 是短暂的通知状态）
+        // 非白球落袋犯规 → 恢复为红球阶段（简化规则）
         if (!m_whitePocketed) {
-            m_phase = preFoulPhase;
+            m_phase = GamePhase::RedBall;
             emit phaseChanged(m_phase);
         }
         // 白球落袋犯规 → 由 placeWhiteBall() 恢复阶段
@@ -347,18 +346,20 @@ void GameState::handlePostShot() {
     }
 
     // 7. 阶段转换
-    if (m_phase == GamePhase::RedBall) {
-        if (redPocketed) {
+    if (allRedsPocketed()) {
+        if (m_phase != GamePhase::ColorBall) {
             m_phase = GamePhase::ColorBall;
             emit phaseChanged(m_phase);
         }
-    } else if (m_phase == GamePhase::ColorBall) {
-        // 交替阶段（红球还有）：进彩球 → 回红球阶段
-        if (colorPocketed && !allRedsPocketed()) {
-            m_phase = GamePhase::RedBall;
-            emit phaseChanged(m_phase);
-        }
-        // 红球清空后：留在彩球阶段，彩球永久落袋
+    } else if (m_phase == GamePhase::ColorBall && colorPocketed) {
+        m_phase = GamePhase::RedBall;
+        emit phaseChanged(m_phase);
+    } else if (m_phase == GamePhase::RedBall && redPocketed) {
+        m_phase = GamePhase::ColorBall;
+        emit phaseChanged(m_phase);
+    } else if (m_phase != GamePhase::RedBall) {
+        m_phase = GamePhase::RedBall;
+        emit phaseChanged(m_phase);
     }
 
     // 8. 无进球 → 切换回合（犯规分支已 return，不会走到这里）
