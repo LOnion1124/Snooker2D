@@ -16,10 +16,6 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.5.*'
-          host: 'windows'
-          target: 'desktop'
-          arch: 'win64_msvc2022'
           cache: true
 
       - name: Build
