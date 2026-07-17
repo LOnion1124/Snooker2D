@@ -67,6 +67,20 @@ void GameSessionViewModel::setPower(double power) {
     }
 }
 
+void GameSessionViewModel::setEnglish(double englishX, double englishY) {
+    if (englishX < -1.0) englishX = -1.0;
+    if (englishX > 1.0) englishX = 1.0;
+    if (englishY < -1.0) englishY = -1.0;
+    if (englishY > 1.0) englishY = 1.0;
+
+    if (m_englishX != englishX || m_englishY != englishY) {
+        m_englishX = englishX;
+        m_englishY = englishY;
+        pushCueState();
+        pushTableState();
+    }
+}
+
 void GameSessionViewModel::onShotAnimationFinished() {
     if (m_gameState) {
         m_gameState->performShot(m_cueAngle, m_cuePower);
@@ -84,6 +98,8 @@ void GameSessionViewModel::restart() {
     m_simulationTimer->stop();
     m_cueAngle = 0.0;
     m_cuePower = 50.0;
+    m_englishX = 0.0;
+    m_englishY = 0.0;
     m_foulType = FoulType::None;
     m_foulPenaltyPoints = 0;
     m_foulingPlayer = 0;
@@ -163,6 +179,8 @@ void GameSessionViewModel::pushTableState() {
 
     state.cueAngle = m_cueAngle;
     state.cuePower = m_cuePower;
+    state.cueEnglishX = m_englishX;
+    state.cueEnglishY = m_englishY;
 
     state.centeredCoordinates = false;
     for (const BallViewState& bvs : state.balls) {

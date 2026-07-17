@@ -62,6 +62,8 @@ private:
     QVector<BallViewState> m_cachedBalls;
     double m_cachedCueAngle = 0.0;
     double m_cachedCuePower = 50.0;
+    double m_cachedCueEnglishX = 0.0;
+    double m_cachedCueEnglishY = 0.0;
     bool m_cachedCanAim = false;
     bool m_cachedCanShoot = false;
     bool m_cachedIsPlacingWhiteBall = false;

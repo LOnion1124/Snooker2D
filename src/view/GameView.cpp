@@ -32,6 +32,8 @@ void GameView::applyTableState(const TableViewState& state) {
     m_cachedBalls = state.balls;
     m_cachedCueAngle = state.cueAngle;
     m_cachedCuePower = state.cuePower;
+    m_cachedCueEnglishX = state.cueEnglishX;
+    m_cachedCueEnglishY = state.cueEnglishY;
     m_cachedCanAim = state.canAim;
     m_cachedCanShoot = state.canShoot;
     m_cachedIsPlacingWhiteBall = state.isPlacingWhiteBall;
@@ -231,6 +233,15 @@ void GameView::drawBalls(QPainter& painter) {
         painter.setPen(Qt::NoPen);
         painter.setBrush(QColor(255, 255, 255, 120));
         painter.drawEllipse(highlightCenter, ballRadius * 0.35, ballRadius * 0.35);
+
+        if (ball.type == 0 && !m_isShotAnimating) {
+            const QPointF englishPoint(center.x() + m_cachedCueEnglishX * ballRadius * 0.6,
+                                       center.y() - m_cachedCueEnglishY * ballRadius * 0.6);
+            painter.setPen(QPen(QColor(120, 0, 0), 1.0));
+            painter.setBrush(QColor(220, 30, 30));
+            painter.drawEllipse(englishPoint, qMax(2.0, ballRadius * 0.18),
+                                qMax(2.0, ballRadius * 0.18));
+        }
     }
     painter.restore();
 }
