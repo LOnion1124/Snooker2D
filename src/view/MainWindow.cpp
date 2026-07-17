@@ -5,6 +5,7 @@
 #include "ScoreBoard.h"
 #include "GameInfoPanel.h"
 #include "GameControlPanel.h"
+#include "EnglishControlPanel.h"
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -33,10 +34,12 @@ void MainWindow::setupUI() {
     auto* rightLayout = new QVBoxLayout();
     m_scoreBoard = new ScoreBoard(this);
     m_gameInfoPanel = new GameInfoPanel(this);
+    m_englishControlPanel = new EnglishControlPanel(this);
     m_gameControlPanel = new GameControlPanel(this);
 
     rightLayout->addWidget(m_scoreBoard);
     rightLayout->addWidget(m_gameInfoPanel);
+    rightLayout->addWidget(m_englishControlPanel);
     rightLayout->addStretch();
     rightLayout->addWidget(m_gameControlPanel);
 
@@ -59,6 +62,9 @@ void MainWindow::setLanguage(UiLanguage language) {
     }
     if (m_gameInfoPanel) {
         m_gameInfoPanel->setLanguage(language);
+    }
+    if (m_englishControlPanel) {
+        m_englishControlPanel->setLanguage(language);
     }
     if (m_gameControlPanel) {
         m_gameControlPanel->setLanguage(language);

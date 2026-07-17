@@ -10,6 +10,7 @@ class CueControl;
 class ScoreBoard;
 class GameInfoPanel;
 class GameControlPanel;
+class EnglishControlPanel;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -22,6 +23,7 @@ public:
     CueControl* cueControl() const { return m_cueControl; }
     ScoreBoard* scoreBoard() const { return m_scoreBoard; }
     GameInfoPanel* gameInfoPanel() const { return m_gameInfoPanel; }
+    EnglishControlPanel* englishControlPanel() const { return m_englishControlPanel; }
     GameControlPanel* gameControlPanel() const { return m_gameControlPanel; }
 
 private:
@@ -32,6 +34,7 @@ private:
     CueControl* m_cueControl = nullptr;
     ScoreBoard* m_scoreBoard = nullptr;
     GameInfoPanel* m_gameInfoPanel = nullptr;
+    EnglishControlPanel* m_englishControlPanel = nullptr;
     GameControlPanel* m_gameControlPanel = nullptr;
     UiLanguage m_language = UiLanguage::Chinese;
 };

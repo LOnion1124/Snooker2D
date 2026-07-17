@@ -8,6 +8,7 @@
 #include "ScoreBoard.h"
 #include "GameInfoPanel.h"
 #include "GameControlPanel.h"
+#include "EnglishControlPanel.h"
 
 namespace Snooker2D {
 
@@ -23,6 +24,7 @@ int App::run(int argc, char* argv[])
     CueControl* cueControl = mainWindow.cueControl();
     ScoreBoard* scoreBoard = mainWindow.scoreBoard();
     GameInfoPanel* gameInfoPanel = mainWindow.gameInfoPanel();
+    EnglishControlPanel* englishControlPanel = mainWindow.englishControlPanel();
     GameControlPanel* gameControlPanel = mainWindow.gameControlPanel();
 
     // ViewModel → View（属性绑定）
@@ -31,6 +33,8 @@ int App::run(int argc, char* argv[])
             gameView, &GameView::applyTableState);
     QObject::connect(&sessionViewModel, &GameSessionViewModel::cueStateReady,
             cueControl, &CueControl::applyCueState);
+    QObject::connect(&sessionViewModel, &GameSessionViewModel::cueStateReady,
+            englishControlPanel, &EnglishControlPanel::applyCueState);
     QObject::connect(&sessionViewModel, &GameSessionViewModel::scoreStateReady,
             scoreBoard, &ScoreBoard::applyScoreState);
     QObject::connect(&sessionViewModel, &GameSessionViewModel::gameInfoStateReady,
@@ -50,7 +54,7 @@ int App::run(int argc, char* argv[])
             &sessionViewModel, &GameSessionViewModel::placeWhiteBall);
     QObject::connect(gameControlPanel, &GameControlPanel::restartRequested,
             &sessionViewModel, &GameSessionViewModel::restart);
-    QObject::connect(cueControl, &CueControl::englishChanged,
+    QObject::connect(englishControlPanel, &EnglishControlPanel::englishChanged,
             &sessionViewModel, &GameSessionViewModel::setEnglish);
 
     // 启动
