@@ -96,21 +96,7 @@ void Physics::applyFriction(std::vector<Ball*>& balls, double deltaTime) {
             ball->setAngularVelocity(0.0);
         }
 
-        // 3. 滚动耦合 — 逐步将滑动拉向纯滚动
-        if (speed > MIN_VELOCITY && std::abs(w) > 0.01) {
-            Vector2D forward = vel.normalized();
-            Vector2D rollTangent = MathUtils::tangent(forward);
-            double rollSpeed = w * BALL_RADIUS;
-
-            double coupling = rollSpeed * ROLLING_COUPLING;
-            ball->setVelocity(vel + rollTangent * coupling);
-
-            double vt = vel.dot(rollTangent);
-            double angularCoupling = (vt - rollSpeed) * ROLLING_COUPLING / BALL_RADIUS;
-            ball->setAngularVelocity(w + angularCoupling * 0.5);
-        }
-
-        // 4. 完全停下时角速度也清零
+        // 3. 完全停下时角速度也清零
         if (speed < MIN_VELOCITY && std::abs(ball->angularVelocity()) < 0.01) {
             ball->setAngularVelocity(0.0);
         }

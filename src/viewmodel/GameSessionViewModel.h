@@ -26,7 +26,6 @@ public slots:
     void onShotAnimationFinished();
     void placeWhiteBall(double x, double y);
     void restart();
-    void setEnglish(double englishX, double englishY);
 
 signals:
     // ViewModel → View
