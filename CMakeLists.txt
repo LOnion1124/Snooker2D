@@ -111,6 +111,14 @@ target_link_libraries(test_physics PRIVATE
     snooker_model
 )
 
+add_executable(test_gamestate
+    tests/test_gamestate.cpp
+)
+
+target_link_libraries(test_gamestate PRIVATE
+    snooker_model
+)
+
 # 架构护栏检查
 add_custom_target(check_architecture
     COMMAND powershell -ExecutionPolicy Bypass

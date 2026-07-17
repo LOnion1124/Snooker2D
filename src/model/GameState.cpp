@@ -25,8 +25,10 @@ void GameState::startNewGame() {
     resetGame();
     m_currentPlayerId = PlayerId::Player1;
     m_phase = GamePhase::RedBall;
+    m_whiteBallPlacing = true;
     emit phaseChanged(m_phase);
     emit turnChanged(currentPlayer());
+    emit whiteBallPlacingStarted();
 }
 
 void GameState::resetGame() {

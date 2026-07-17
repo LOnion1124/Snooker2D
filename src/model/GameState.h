@@ -38,7 +38,7 @@ public:
     const std::vector<std::unique_ptr<Ball>>& balls() const { return m_balls; }
     const Table& table() const { return *m_table; }
 
-    // 白球放置（白球落袋后）
+    // 白球放置（开球或白球落袋后）
     bool isWhiteBallPlacing() const { return m_whiteBallPlacing; }
     bool isValidPlacement(Vector2D pos) const;
     void placeWhiteBall(Vector2D pos);
