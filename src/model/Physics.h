@@ -37,7 +37,8 @@ private:
     void checkPocketDetection(std::vector<Ball*>& balls, const Table& table);
 
     void resolveBallCollision(Ball& a, Ball& b, BallType* ioFirstHit = nullptr);
-    void resolveCushionCollision(Ball& ball, const Vector2D& closestPoint, double distance);
+    void resolveCushionCollision(Ball& ball, const Vector2D& closestPoint,
+                                 const Vector2D& inwardNormal);
 
     // 硬边界约束 — 防止链式推出导致球越界
     static void applyHardConstraint(Ball& ball, double halfW, double halfH, double margin);

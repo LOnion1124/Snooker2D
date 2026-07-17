@@ -9,6 +9,23 @@
 
 namespace Snooker2D {
 
+namespace {
+
+Vector2D cushionInwardNormal(const Cushion& cushion) {
+    const double dx = cushion.p2.x - cushion.p1.x;
+    const double dy = cushion.p2.y - cushion.p1.y;
+
+    if (std::abs(dx) >= std::abs(dy)) {
+        return cushion.p1.y < 0.0 ? Vector2D(0.0, 1.0)
+                                  : Vector2D(0.0, -1.0);
+    }
+
+    return cushion.p1.x < 0.0 ? Vector2D(1.0, 0.0)
+                              : Vector2D(-1.0, 0.0);
+}
+
+} // namespace
+
 Physics::Physics(QObject* parent)
     : QObject(parent)
 {
@@ -34,7 +51,7 @@ void Physics::step(double deltaTime, std::vector<Ball*>& balls, const Table& tab
     // 6. 硬边界约束 — 防止链式推出越界
     double hw = table.width() / 2.0;
     double hh = table.height() / 2.0;
-    double margin = BALL_RADIUS * 0.5;
+    double margin = BALL_RADIUS;
     for (auto* ball : balls) {
         if (ball->isPocketed()) continue;
         applyHardConstraint(*ball, hw, hh, margin);
@@ -102,7 +119,7 @@ void Physics::checkBallCushionCollisions(std::vector<Ball*>& balls, const Table&
             double dist = MathUtils::distance(ball->position(), closest);
             if (dist < BALL_RADIUS) {
                 if (outCushionHit) *outCushionHit = true;
-                resolveCushionCollision(*ball, closest, dist);
+                resolveCushionCollision(*ball, closest, cushionInwardNormal(cushion));
             }
         }
     }
@@ -163,28 +180,20 @@ void Physics::resolveBallCollision(Ball& a, Ball& b, BallType* ioFirstHit) {
     }
 }
 
-void Physics::resolveCushionCollision(Ball& ball, const Vector2D& closestPoint, double distance) {
-    Vector2D normal = ball.position() - closestPoint;
-    double normalLen = normal.length();
+void Physics::resolveCushionCollision(Ball& ball, const Vector2D& closestPoint,
+                                      const Vector2D& inwardNormal) {
+    const double signedDistance = MathUtils::dot(ball.position() - closestPoint, inwardNormal);
 
-    // 防零除：球心正好在库边上（极罕见），选向上为默认法线
-    if (normalLen < 1e-9) {
-        normal = Vector2D(0.0, -1.0);
-        normalLen = 1.0;
-    } else {
-        normal = normal.normalized();
-    }
-
-    // 1. 位置修正 — 沿法线推出至刚好接触
-    double overlap = BALL_RADIUS - distance;
+    // 1. 位置修正 — 沿台内法线推出至刚好接触
+    double overlap = BALL_RADIUS - signedDistance;
     if (overlap > 0.0) {
-        ball.setPosition(ball.position() + normal * overlap);
+        ball.setPosition(ball.position() + inwardNormal * overlap);
     }
 
     // 2. 速度反射（带库边恢复系数）
-    double velAlongNormal = MathUtils::dot(ball.velocity(), normal);
+    double velAlongNormal = MathUtils::dot(ball.velocity(), inwardNormal);
     if (velAlongNormal < 0.0) {
-        Vector2D reflected = ball.velocity() - normal * ((1.0 + CUSHION_RESTITUTION) * velAlongNormal);
+        Vector2D reflected = ball.velocity() - inwardNormal * ((1.0 + CUSHION_RESTITUTION) * velAlongNormal);
         ball.setVelocity(reflected);
     }
 }
