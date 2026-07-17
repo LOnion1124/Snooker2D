@@ -1,8 +1,6 @@
 #include "UiLanguage.h"
 #include "../common/Types.h"
 
-#include <QRegularExpression>
-
 namespace Snooker2D {
 
 QString translatedPhaseText(int phaseKind, bool isSimulating, UiLanguage language) {
@@ -34,38 +32,46 @@ QString translatedPhaseText(int phaseKind, bool isSimulating, UiLanguage languag
 }
 
 QString translatedMessage(const QString& message, UiLanguage language) {
-    if (language == UiLanguage::Chinese || message.isEmpty()) {
-        return message;
-    }
-
-    static const QRegularExpression penaltyPattern(QStringLiteral("罚 (\\d+) 分"));
-    const QRegularExpressionMatch penaltyMatch = penaltyPattern.match(message);
-    const QString penalty = penaltyMatch.hasMatch()
-        ? penaltyMatch.captured(1)
-        : QString();
-
-    if (message.startsWith(QStringLiteral("空杆"))) {
-        return penalty.isEmpty()
-            ? QStringLiteral("Missed all balls.")
-            : QStringLiteral("Missed all balls. Penalty: %1 points").arg(penalty);
-    }
-    if (message.startsWith(QStringLiteral("先击中错误球"))) {
-        return penalty.isEmpty()
-            ? QStringLiteral("Wrong ball hit first.")
-            : QStringLiteral("Wrong ball hit first. Penalty: %1 points").arg(penalty);
-    }
-    if (message.startsWith(QStringLiteral("彩球落袋"))) {
-        return penalty.isEmpty()
-            ? QStringLiteral("Color ball potted.")
-            : QStringLiteral("Color ball potted. Penalty: %1 points").arg(penalty);
-    }
-    if (message.startsWith(QStringLiteral("无球碰库"))) {
-        return penalty.isEmpty()
-            ? QStringLiteral("No ball hit a cushion.")
-            : QStringLiteral("No ball hit a cushion. Penalty: %1 points").arg(penalty);
-    }
-
+    (void)language;
     return message;
+}
+
+QString translatedFoulText(int foulType, int penaltyPoints, UiLanguage language) {
+    const auto type = static_cast<FoulType>(foulType);
+    const bool english = language == UiLanguage::English;
+
+    QString reason;
+    if (english) {
+        switch (type) {
+            case FoulType::MissedAll:        reason = QStringLiteral("Missed all balls"); break;
+            case FoulType::WrongBallFirst:  reason = QStringLiteral("Wrong ball hit first"); break;
+            case FoulType::WhitePocketed:   reason = QStringLiteral("Cue ball potted"); break;
+            case FoulType::NoBallHitCushion: reason = QStringLiteral("No ball hit a cushion"); break;
+            case FoulType::ColorPocketed:   reason = QStringLiteral("Color ball potted"); break;
+            case FoulType::BallOffTable:    reason = QStringLiteral("Ball off the table"); break;
+            case FoulType::PushShot:        reason = QStringLiteral("Push shot"); break;
+            case FoulType::Other:           reason = QStringLiteral("Foul"); break;
+            case FoulType::None:            return QString();
+        }
+        return penaltyPoints > 0
+            ? QStringLiteral("%1. Penalty: %2 points").arg(reason).arg(penaltyPoints)
+            : reason;
+    }
+
+    switch (type) {
+        case FoulType::MissedAll:        reason = QStringLiteral("空杆"); break;
+        case FoulType::WrongBallFirst:  reason = QStringLiteral("先击中错误球"); break;
+        case FoulType::WhitePocketed:   reason = QStringLiteral("白球落袋"); break;
+        case FoulType::NoBallHitCushion: reason = QStringLiteral("无球碰库"); break;
+        case FoulType::ColorPocketed:   reason = QStringLiteral("彩球落袋"); break;
+        case FoulType::BallOffTable:    reason = QStringLiteral("球离开台面"); break;
+        case FoulType::PushShot:        reason = QStringLiteral("推杆"); break;
+        case FoulType::Other:           reason = QStringLiteral("犯规"); break;
+        case FoulType::None:            return QString();
+    }
+    return penaltyPoints > 0
+        ? QStringLiteral("%1！罚 %2 分").arg(reason).arg(penaltyPoints)
+        : reason;
 }
 
 } // namespace Snooker2D

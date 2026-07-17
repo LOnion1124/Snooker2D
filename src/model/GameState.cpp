@@ -240,7 +240,6 @@ void GameState::handlePostShot() {
         foulResult.isFoul = true;
         foulResult.type = FoulType::MissedAll;
         foulResult.penaltyPoints = m_rules->calculatePenalty(FoulType::MissedAll, requiredType);
-        foulResult.description = QStringLiteral("空杆！罚 %1 分").arg(foulResult.penaltyPoints);
         isFoul = true;
     }
     // 先击中错误球（含交替阶段特殊处理）
@@ -268,7 +267,6 @@ void GameState::handlePostShot() {
             foulResult.isFoul = true;
             foulResult.type = FoulType::WrongBallFirst;
             foulResult.penaltyPoints = m_rules->calculatePenalty(FoulType::WrongBallFirst, foulBallType);
-            foulResult.description = QStringLiteral("先击中错误球！罚 %1 分").arg(foulResult.penaltyPoints);
             isFoul = true;
         }
     }
@@ -276,9 +274,8 @@ void GameState::handlePostShot() {
     // 红球阶段彩球落袋 → 犯规（即使先碰了红球）
     if (!isFoul && m_phase == GamePhase::RedBall && colorPocketed) {
         foulResult.isFoul = true;
-        foulResult.type = FoulType::WrongBallFirst;
-        foulResult.penaltyPoints = m_rules->calculatePenalty(FoulType::WrongBallFirst, firstPocketedColor);
-        foulResult.description = QStringLiteral("彩球落袋！罚 %1 分").arg(foulResult.penaltyPoints);
+        foulResult.type = FoulType::ColorPocketed;
+        foulResult.penaltyPoints = m_rules->calculatePenalty(FoulType::ColorPocketed, firstPocketedColor);
         isFoul = true;
     }
     // 无球碰库（有进球时豁免）
@@ -286,7 +283,6 @@ void GameState::handlePostShot() {
         foulResult.isFoul = true;
         foulResult.type = FoulType::NoBallHitCushion;
         foulResult.penaltyPoints = m_rules->calculatePenalty(FoulType::NoBallHitCushion, m_firstHitBall);
-        foulResult.description = QStringLiteral("无球碰库！罚 %1 分").arg(foulResult.penaltyPoints);
         isFoul = true;
     }
 

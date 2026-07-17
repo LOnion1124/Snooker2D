@@ -41,7 +41,8 @@ struct ScoreViewState {
     int     player1Break = 0;
     int     player2Break = 0;
     int     foulingPlayer = 0;  // 犯规者编号: 0=无, 1=玩家1, 2=玩家2
-    QString foulMessage;
+    int     foulType = 0;
+    int     foulPenaltyPoints = 0;
     QString statusMessage;
 };
 
@@ -49,9 +50,9 @@ struct ScoreViewState {
 // phaseKind 对应 GamePhase 枚举，供 View 做样式分支，避免解析中文
 struct GameInfoViewState {
     int     currentPlayer = 0;
-    QString phaseText;
     int     phaseKind = 0;
     QString message;
+    bool    isSimulating = false;
     bool    showWhiteBallPlacementHint = false;
 };
 

@@ -1,4 +1,5 @@
 #include "ScoreBoard.h"
+#include "../common/Types.h"
 
 #include <QLabel>
 #include <QVBoxLayout>
@@ -20,11 +21,11 @@ ScoreBoard::ScoreBoard(QWidget* parent) : QWidget(parent) {
 void ScoreBoard::applyScoreState(const ScoreViewState& state) {
     m_state = state;
     m_hasState = true;
-    m_foulVisible = !state.foulMessage.isEmpty();
+    m_foulVisible = state.foulType != static_cast<int>(FoulType::None);
     refreshTexts();
 
     // 有犯规消息时启动 3 秒隐藏定时器
-    if (!state.foulMessage.isEmpty()) {
+    if (state.foulType != static_cast<int>(FoulType::None)) {
         m_foulTimer->start();
     }
 }
@@ -101,11 +102,12 @@ void ScoreBoard::refreshTexts() {
         ? QStringLiteral("Break: %1").arg(m_state.player2Break)
         : QStringLiteral("单杆: %1").arg(m_state.player2Break));
 
-    if (m_foulVisible && !m_state.foulMessage.isEmpty()) {
+    if (m_foulVisible && m_state.foulType != static_cast<int>(FoulType::None)) {
         const QString playerName = (m_state.foulingPlayer == 2)
             ? (english ? QStringLiteral("Player 2") : QStringLiteral("玩家 2"))
             : (english ? QStringLiteral("Player 1") : QStringLiteral("玩家 1"));
-        const QString foulMessage = translatedMessage(m_state.foulMessage, m_language);
+        const QString foulMessage = translatedFoulText(
+            m_state.foulType, m_state.foulPenaltyPoints, m_language);
         m_foulLabel->setText(english
             ? QStringLiteral("%1 foul: %2").arg(playerName, foulMessage)
             : QStringLiteral("%1 犯规: %2").arg(playerName, foulMessage));

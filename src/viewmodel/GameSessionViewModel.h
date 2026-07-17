@@ -51,7 +51,6 @@ private:
     void pushScoreState();
     void pushGameInfoState();
     void pushAllStates();
-    QString phaseTextFromEnum(GamePhase phase) const;
 
     GameState* m_gameState = nullptr;
     QTimer* m_simulationTimer = nullptr;
@@ -61,8 +60,9 @@ private:
     double m_englishX  = 0.0;
     double m_englishY  = 0.0;
 
-    QString m_foulMessage;
     QString m_statusMessage;
+    FoulType m_foulType = FoulType::None;
+    int     m_foulPenaltyPoints = 0;
     int     m_foulingPlayer = 0;
 };
 

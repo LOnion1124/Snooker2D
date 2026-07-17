@@ -60,6 +60,7 @@ enum class FoulType {
     WrongBallFirst,
     WhitePocketed,
     NoBallHitCushion,
+    ColorPocketed,
     BallOffTable,
     PushShot,
     Other

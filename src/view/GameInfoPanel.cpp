@@ -83,10 +83,7 @@ void GameInfoPanel::refreshTexts() {
 
     QString phaseText;
     if (m_hasState) {
-        const bool isSimulating = m_state.phaseText.endsWith(QStringLiteral(" (模拟中...)"));
-        phaseText = english
-            ? translatedPhaseText(m_state.phaseKind, isSimulating, m_language)
-            : m_state.phaseText;
+        phaseText = translatedPhaseText(m_state.phaseKind, m_state.isSimulating, m_language);
     }
     m_phaseLabel->setText(phaseText.isEmpty()
         ? (english ? QStringLiteral("Phase: --") : QStringLiteral("阶段: --"))
