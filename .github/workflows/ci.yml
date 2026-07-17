@@ -13,32 +13,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup MSYS2
-        uses: msys2/setup-msys2@v2
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
         with:
-          msystem: MINGW64
-          update: true
-          install: >-
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-ninja
-            mingw-w64-x86_64-qt6-base
-
-      - name: Configure
-        shell: msys2 {0}
-        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          version: '6.5.*'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2022'
+          cache: true
 
       - name: Build
-        shell: msys2 {0}
-        run: cmake --build build
+        run: |
+          cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
 
       - name: Run tests
-        shell: msys2 {0}
         run: |
           ./build/test_mathutils.exe
           ./build/test_physics.exe
           ./build/test_gamestate.exe
 
       - name: Architecture check
-        shell: pwsh
         run: ./tests/architecture/check_mvvm_boundaries.ps1
