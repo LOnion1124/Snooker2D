@@ -8,7 +8,7 @@ set(CMAKE_AUTOMOC ON)
 # MSVC 兼容：禁止 windows.h 定义 min/max 宏（会破坏 std::clamp）
 add_compile_definitions(NOMINMAX)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Test)
 
 # Common 层（纯 C++，不依赖 Qt）
 add_library(snooker_common STATIC
@@ -121,6 +121,68 @@ add_executable(test_gamestate
 
 target_link_libraries(test_gamestate PRIVATE
     snooker_model
+)
+
+# --- Model 层新测试 ---
+
+add_executable(test_ball
+    tests/test_ball.cpp
+)
+target_link_libraries(test_ball PRIVATE
+    snooker_model
+)
+
+add_executable(test_player
+    tests/test_player.cpp
+)
+target_link_libraries(test_player PRIVATE
+    snooker_model
+)
+
+add_executable(test_rules
+    tests/test_rules.cpp
+)
+target_link_libraries(test_rules PRIVATE
+    snooker_model
+)
+
+# --- ViewModel 测试（Qt Test + QSignalSpy）---
+
+add_executable(test_viewmodel
+    tests/test_viewmodel.cpp
+)
+target_link_libraries(test_viewmodel PRIVATE
+    snooker_viewmodel
+    Qt6::Test
+)
+
+# --- View 测试（Qt Test + QApplication + offscreen）---
+
+add_executable(test_englishcontrolpanel
+    tests/test_englishcontrolpanel.cpp
+)
+target_link_libraries(test_englishcontrolpanel PRIVATE
+    snooker_view
+    Qt6::Test
+    Qt6::Widgets
+)
+
+add_executable(test_gamecontrolpanel
+    tests/test_gamecontrolpanel.cpp
+)
+target_link_libraries(test_gamecontrolpanel PRIVATE
+    snooker_view
+    Qt6::Test
+    Qt6::Widgets
+)
+
+add_executable(test_gameview
+    tests/test_gameview.cpp
+)
+target_link_libraries(test_gameview PRIVATE
+    snooker_view
+    Qt6::Test
+    Qt6::Widgets
 )
 
 # 架构护栏检查

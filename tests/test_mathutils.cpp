@@ -2,33 +2,12 @@
 #include "../src/common/Constants.h"
 #include "../src/common/Types.h"
 
+#include "test_utils.h"
+
 #include <iostream>
-#include <cmath>
-#include <cassert>
 
 namespace Snooker2D {
 namespace Test {
-
-// 测试辅助：浮点比较
-bool near(double a, double b, double eps = 1e-9) {
-    return std::abs(a - b) < eps;
-}
-
-bool vecNear(const Vector2D& a, const Vector2D& b, double eps = 1e-9) {
-    return near(a.x, b.x, eps) && near(a.y, b.y, eps);
-}
-
-int passed = 0;
-int failed = 0;
-
-#define CHECK(cond, name) \
-    do { \
-        if (cond) { passed++; } \
-        else { failed++; std::cerr << "  FAIL: " << name << std::endl; } \
-    } while(0)
-
-#define CHECK_NEAR(a, b, name) CHECK(near(a, b), name)
-#define CHECK_VEC_NEAR(a, b, name) CHECK(vecNear(a, b), name)
 
 // --- 向量运算 ---
 

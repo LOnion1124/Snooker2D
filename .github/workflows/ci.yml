@@ -27,10 +27,19 @@ jobs:
           cmake --build build
 
       - name: Run tests
+        env:
+          QT_QPA_PLATFORM: offscreen
         run: |
           ./build/test_mathutils.exe
           ./build/test_physics.exe
           ./build/test_gamestate.exe
+          ./build/test_ball.exe
+          ./build/test_player.exe
+          ./build/test_rules.exe
+          ./build/test_viewmodel.exe
+          ./build/test_englishcontrolpanel.exe
+          ./build/test_gamecontrolpanel.exe
+          ./build/test_gameview.exe
 
       - name: Architecture check
         run: ./tests/architecture/check_mvvm_boundaries.ps1

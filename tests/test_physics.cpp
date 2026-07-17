@@ -4,25 +4,14 @@
 #include "../src/common/Constants.h"
 #include "../src/common/Types.h"
 
+#include "test_utils.h"
+
 #include <cmath>
 #include <iostream>
 #include <vector>
 
 namespace Snooker2D {
 namespace Test {
-
-int passed = 0;
-int failed = 0;
-
-#define CHECK(cond, name) \
-    do { \
-        if (cond) { passed++; } \
-        else { failed++; std::cerr << "  FAIL: " << name << std::endl; } \
-    } while (0)
-
-bool near(double a, double b, double eps = 1e-9) {
-    return std::abs(a - b) < eps;
-}
 
 void testTopCushionOvershootReflectsInward() {
     Table table;
