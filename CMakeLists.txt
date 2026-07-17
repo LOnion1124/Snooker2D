@@ -82,6 +82,7 @@ target_link_libraries(snooker_view PUBLIC
 add_executable(Snooker2D
     src/main.cpp
     src/app/App.cpp
+    assets/app.rc
 )
 
 target_link_libraries(Snooker2D PRIVATE

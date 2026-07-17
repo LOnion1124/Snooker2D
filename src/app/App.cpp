@@ -1,5 +1,6 @@
 #include "App.h"
 #include <QApplication>
+#include <QIcon>
 #include "MainWindow.h"
 #include "GameSessionViewModel.h"
 #include "GameView.h"
@@ -13,6 +14,7 @@ namespace Snooker2D {
 int App::run(int argc, char* argv[])
 {
     QApplication app(argc, argv);
+    app.setWindowIcon(QIcon("assets/favicon.ico"));
 
     GameSessionViewModel sessionViewModel;
     MainWindow mainWindow;
