@@ -37,10 +37,14 @@ void MainWindow::setupUI() {
     m_englishControlPanel = new EnglishControlPanel(this);
     m_gameControlPanel = new GameControlPanel(this);
 
+    rightLayout->setContentsMargins(4, 0, 0, 0);
+    rightLayout->setSpacing(0);
     rightLayout->addWidget(m_scoreBoard);
+    rightLayout->addStretch(1);
     rightLayout->addWidget(m_gameInfoPanel);
+    rightLayout->addStretch(1);
     rightLayout->addWidget(m_englishControlPanel);
-    rightLayout->addStretch();
+    rightLayout->addStretch(1);
     rightLayout->addWidget(m_gameControlPanel);
 
     connect(m_gameControlPanel, &GameControlPanel::languageChanged,
