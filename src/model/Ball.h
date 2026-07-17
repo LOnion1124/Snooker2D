@@ -18,6 +18,7 @@ public:
     BallType type() const { return m_type; }
     Vector2D position() const { return m_position; }
     Vector2D velocity() const { return m_velocity; }
+    double angularVelocity() const { return m_angularVelocity; }
     bool isPocketed() const { return m_pocketed; }
     bool isOnTable() const { return m_onTable; }
     int pointValue() const;
@@ -25,6 +26,7 @@ public:
     // 状态修改
     void setPosition(const Vector2D& pos);
     void setVelocity(const Vector2D& vel);
+    void setAngularVelocity(double w);
     void setPocketed(bool pocketed);
     void setOnTable(bool onTable);
     void resetPosition(const Vector2D& initialPos);
@@ -39,6 +41,7 @@ private:
     BallType m_type;
     Vector2D m_position;
     Vector2D m_velocity;
+    double m_angularVelocity = 0.0;
     bool m_pocketed = false;
     bool m_onTable = true;
     Vector2D m_initialPosition; // 摆球初始位置（用于复位彩球）

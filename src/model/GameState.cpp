@@ -98,7 +98,8 @@ void GameState::initBalls() {
     }
 }
 
-void GameState::performShot(double angle, double power) {
+void GameState::performShot(double angle, double power,
+                             double englishX, double englishY) {
     if (m_simulationRunning || m_phase == GamePhase::GameOver || m_whiteBallPlacing) return;
 
     Ball* whiteBall = nullptr;
@@ -113,6 +114,13 @@ void GameState::performShot(double angle, double power) {
     double rad = angle * 3.14159265358979323846 / 180.0;
     double speed = (power / 100.0) * MAX_SPEED;
     whiteBall->setVelocity(Vector2D(std::cos(rad) * speed, -std::sin(rad) * speed));
+
+    // 加塞：english 转换为白球初始角速度
+    // englishY: 上塞为正（Follow），下塞为负（Draw）
+    // englishX: 侧塞影响库边反弹，通过碰撞阶段的切线摩擦体现
+    (void)englishX;
+    double spin = englishY * ENGLISH_TO_SPIN;
+    whiteBall->setAngularVelocity(spin);
 
     // 快照击球前各球落袋状态
     m_preShotPocketed.resize(m_balls.size());

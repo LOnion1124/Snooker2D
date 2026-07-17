@@ -68,10 +68,13 @@ void GameSessionViewModel::setPower(double power) {
 }
 
 void GameSessionViewModel::setEnglish(double englishX, double englishY) {
-    if (englishX < -1.0) englishX = -1.0;
-    if (englishX > 1.0) englishX = 1.0;
-    if (englishY < -1.0) englishY = -1.0;
-    if (englishY > 1.0) englishY = 1.0;
+    auto clamp = [](double v) {
+        if (v < -1.0) return -1.0;
+        if (v > 1.0)  return 1.0;
+        return v;
+    };
+    englishX = clamp(englishX);
+    englishY = clamp(englishY);
 
     if (m_englishX != englishX || m_englishY != englishY) {
         m_englishX = englishX;
@@ -83,7 +86,7 @@ void GameSessionViewModel::setEnglish(double englishX, double englishY) {
 
 void GameSessionViewModel::onShotAnimationFinished() {
     if (m_gameState) {
-        m_gameState->performShot(m_cueAngle, m_cuePower);
+        m_gameState->performShot(m_cueAngle, m_cuePower, m_englishX, m_englishY);
     }
 }
 

@@ -63,8 +63,9 @@ void Physics::step(double deltaTime, std::vector<Ball*>& balls, const Table& tab
 
 bool Physics::allBallsStopped(const std::vector<Ball*>& balls) {
     for (const auto* ball : balls) {
-        if (!ball->isPocketed() && ball->velocity().length() > MIN_VELOCITY) {
-            return false;
+        if (!ball->isPocketed()) {
+            if (ball->velocity().length() > MIN_VELOCITY) return false;
+            if (std::abs(ball->angularVelocity()) > 0.05) return false;
         }
     }
     return true;
@@ -75,14 +76,43 @@ bool Physics::allBallsStopped(const std::vector<Ball*>& balls) {
 void Physics::applyFriction(std::vector<Ball*>& balls, double deltaTime) {
     for (auto* ball : balls) {
         if (ball->isPocketed()) continue;
+
+        // 1. 线速度摩擦
         Vector2D vel = ball->velocity();
         double speed = vel.length();
         if (speed < MIN_VELOCITY) {
             ball->setVelocity(Vector2D(0.0, 0.0));
         } else {
-            // 简单线性摩擦减速
             double friction = 1.0 - (1.0 - FRICTION_COEFFICIENT) * deltaTime * 60.0;
             ball->setVelocity(vel * friction);
+        }
+
+        // 2. 角速度衰减
+        double w = ball->angularVelocity();
+        if (std::abs(w) > 0.01) {
+            w *= SPIN_DECAY;
+            ball->setAngularVelocity(w);
+        } else {
+            ball->setAngularVelocity(0.0);
+        }
+
+        // 3. 滚动耦合 — 逐步将滑动拉向纯滚动
+        if (speed > MIN_VELOCITY && std::abs(w) > 0.01) {
+            Vector2D forward = vel.normalized();
+            Vector2D rollTangent = MathUtils::tangent(forward);
+            double rollSpeed = w * BALL_RADIUS;
+
+            double coupling = rollSpeed * ROLLING_COUPLING;
+            ball->setVelocity(vel + rollTangent * coupling);
+
+            double vt = vel.dot(rollTangent);
+            double angularCoupling = (vt - rollSpeed) * ROLLING_COUPLING / BALL_RADIUS;
+            ball->setAngularVelocity(w + angularCoupling * 0.5);
+        }
+
+        // 4. 完全停下时角速度也清零
+        if (speed < MIN_VELOCITY && std::abs(ball->angularVelocity()) < 0.01) {
+            ball->setAngularVelocity(0.0);
         }
     }
 }
@@ -158,7 +188,7 @@ void Physics::resolveBallCollision(Ball& a, Ball& b, BallType* ioFirstHit) {
         b.setPosition(b.position() + correction);
     }
 
-    // 2. 速度响应 — 等质量弹性碰撞（带恢复系数）
+    // 2. 法线方向速度响应 — 等质量弹性碰撞（带恢复系数）
     Vector2D relVel = a.velocity() - b.velocity();
     double velAlongNormal = relVel.dot(normal);
     if (velAlongNormal <= 0) return; // 正在分离或静止，跳过
@@ -170,7 +200,35 @@ void Physics::resolveBallCollision(Ball& a, Ball& b, BallType* ioFirstHit) {
     a.setVelocity(a.velocity() + impulse);
     b.setVelocity(b.velocity() - impulse);
 
-    // 跟踪白球首次击中的球
+    // 3. 切线方向摩擦响应（加塞）
+    Vector2D tangent = MathUtils::tangent(normal);
+    double vtA = a.velocity().dot(tangent);
+    double vtB = b.velocity().dot(tangent);
+    // 接触点自旋相对速度: ωB * R - ωA * R（方向约定：同向旋转减少相对滑动）
+    double spinContribution = (b.angularVelocity() - a.angularVelocity()) * BALL_RADIUS;
+    double vtRel = (vtA - vtB) + spinContribution;
+
+    if (std::abs(vtRel) > 1e-6) {
+        double frictionImpulse = -vtRel * BALL_BALL_TANGENT_FRICTION;
+
+        // Coulomb 摩擦锥约束: |ft| ≤ μ * |fn|
+        double normalImpulseMagnitude = std::abs(impulseScalar);
+        double maxFriction = normalImpulseMagnitude * BALL_BALL_TANGENT_FRICTION;
+        frictionImpulse = std::clamp(frictionImpulse, -maxFriction, maxFriction);
+
+        Vector2D tangentImpulse = tangent * frictionImpulse;
+
+        a.setVelocity(a.velocity() + tangentImpulse);
+        b.setVelocity(b.velocity() - tangentImpulse);
+
+        // 摩擦力矩改变角速度
+        // I = 0.4 * m * r², Δω = τ * Δt / I = (F * r) / (0.4 * m * r²) 简化
+        double angularChange = frictionImpulse / (0.4 * BALL_RADIUS);
+        a.setAngularVelocity(a.angularVelocity() - angularChange);
+        b.setAngularVelocity(b.angularVelocity() - angularChange);
+    }
+
+    // 4. 跟踪白球首次击中的球
     if (ioFirstHit && *ioFirstHit == BallType::White) {
         if (a.type() == BallType::White && b.type() != BallType::White) {
             *ioFirstHit = b.type();
@@ -195,6 +253,26 @@ void Physics::resolveCushionCollision(Ball& ball, const Vector2D& closestPoint,
     if (velAlongNormal < 0.0) {
         Vector2D reflected = ball.velocity() - inwardNormal * ((1.0 + CUSHION_RESTITUTION) * velAlongNormal);
         ball.setVelocity(reflected);
+    }
+
+    // 3. 切线方向摩擦（加塞）— 左右塞影响库边反弹角度
+    Vector2D tangent = MathUtils::tangent(inwardNormal);
+    double vt = ball.velocity().dot(tangent);
+    double spinVt = ball.angularVelocity() * BALL_RADIUS;
+    double slipSpeed = vt - spinVt;
+
+    if (std::abs(slipSpeed) > 1e-6) {
+        double frictionImpulse = -slipSpeed * CUSHION_TANGENT_FRICTION;
+
+        // Coulomb 摩擦锥约束: |ft| ≤ μ * |fn|
+        double normalImpulseMag = (1.0 + CUSHION_RESTITUTION) * std::abs(velAlongNormal);
+        double maxFriction = normalImpulseMag * CUSHION_TANGENT_FRICTION;
+        frictionImpulse = std::clamp(frictionImpulse, -maxFriction, maxFriction);
+
+        ball.setVelocity(ball.velocity() + tangent * frictionImpulse);
+
+        double angularChange = frictionImpulse / (0.4 * BALL_RADIUS);
+        ball.setAngularVelocity(ball.angularVelocity() + angularChange);
     }
 }
 

@@ -26,7 +26,8 @@ public:
     void resetGame();
 
     // 击球流程
-    void performShot(double angle, double power);
+    void performShot(double angle, double power,
+                     double englishX = 0.0, double englishY = 0.0);
     bool isSimulationRunning() const { return m_simulationRunning; }
     void updateSimulation(); // 每帧调用
 

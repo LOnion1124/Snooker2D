@@ -22,6 +22,7 @@ public slots:
     // View 命令
     void setAngle(double angle);
     void setPower(double power);
+    void setEnglish(double englishX, double englishY);
     void onShotAnimationFinished();
     void placeWhiteBall(double x, double y);
     void restart();
