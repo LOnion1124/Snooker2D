@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QMainWindow>
+#include "UiLanguage.h"
 
 namespace Snooker2D {
 
@@ -25,12 +26,14 @@ public:
 
 private:
     void setupUI();
+    void setLanguage(UiLanguage language);
 
     GameView* m_gameView = nullptr;
     CueControl* m_cueControl = nullptr;
     ScoreBoard* m_scoreBoard = nullptr;
     GameInfoPanel* m_gameInfoPanel = nullptr;
     GameControlPanel* m_gameControlPanel = nullptr;
+    UiLanguage m_language = UiLanguage::Chinese;
 };
 
 } // namespace Snooker2D

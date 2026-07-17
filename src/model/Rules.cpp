@@ -35,7 +35,6 @@ FoulResult Rules::checkFoul(const std::vector<Ball*>& balls,
         result.isFoul = true;
         result.type = FoulType::WhitePocketed;
         result.penaltyPoints = calculatePenalty(FoulType::WhitePocketed, firstHit);
-        result.description = QString("白球落袋！罚 %1 分").arg(result.penaltyPoints);
         return result;
     }
 
@@ -44,7 +43,6 @@ FoulResult Rules::checkFoul(const std::vector<Ball*>& balls,
         result.isFoul = true;
         result.type = FoulType::MissedAll;
         result.penaltyPoints = calculatePenalty(FoulType::MissedAll, requiredType);
-        result.description = QString("空杆！罚 %1 分").arg(result.penaltyPoints);
         return result;
     }
 
@@ -53,7 +51,6 @@ FoulResult Rules::checkFoul(const std::vector<Ball*>& balls,
         result.isFoul = true;
         result.type = FoulType::WrongBallFirst;
         result.penaltyPoints = calculatePenalty(FoulType::WrongBallFirst, firstHit);
-        result.description = QString("先击中错误球！罚 %1 分").arg(result.penaltyPoints);
         return result;
     }
 
@@ -63,7 +60,6 @@ FoulResult Rules::checkFoul(const std::vector<Ball*>& balls,
         result.isFoul = true;
         result.type = FoulType::NoBallHitCushion;
         result.penaltyPoints = calculatePenalty(FoulType::NoBallHitCushion, firstHit);
-        result.description = QString("无球碰库！罚 %1 分").arg(result.penaltyPoints);
         return result;
     }
 
@@ -71,7 +67,6 @@ FoulResult Rules::checkFoul(const std::vector<Ball*>& balls,
     result.isFoul = false;
     result.type = FoulType::None;
     result.penaltyPoints = 0;
-    result.description = "";
     return result;
 }
 

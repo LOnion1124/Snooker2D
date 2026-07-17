@@ -1,5 +1,9 @@
 #include "GameControlPanel.h"
 
+#include <QComboBox>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QFormLayout>
 #include <QFont>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -17,19 +21,18 @@ void GameControlPanel::setupUI() {
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(8);
 
-    auto* titleLabel = new QLabel(QStringLiteral("游戏控制"), this);
-    QFont titleFont = titleLabel->font();
+    m_titleLabel = new QLabel(this);
+    QFont titleFont = m_titleLabel->font();
     titleFont.setPointSize(11);
     titleFont.setBold(true);
-    titleLabel->setFont(titleFont);
-    titleLabel->setAlignment(Qt::AlignCenter);
+    m_titleLabel->setFont(titleFont);
+    m_titleLabel->setAlignment(Qt::AlignCenter);
 
     auto* buttonLayout = new QHBoxLayout();
     buttonLayout->setSpacing(8);
 
-    m_settingsButton = new QPushButton(QStringLiteral("设置"), this);
+    m_settingsButton = new QPushButton(this);
     m_settingsButton->setCursor(Qt::PointingHandCursor);
-    m_settingsButton->setToolTip(QStringLiteral("设置功能暂未开放"));
     m_settingsButton->setStyleSheet(QStringLiteral(
         "QPushButton {"
         "background-color: #455a64;"
@@ -42,8 +45,10 @@ void GameControlPanel::setupUI() {
         "QPushButton:hover { background-color: #546e7a; }"
         "QPushButton:pressed { background-color: #37474f; }"
     ));
+    connect(m_settingsButton, &QPushButton::clicked,
+            this, &GameControlPanel::openSettingsDialog);
 
-    m_restartButton = new QPushButton(QStringLiteral("重启游戏"), this);
+    m_restartButton = new QPushButton(this);
     m_restartButton->setCursor(Qt::PointingHandCursor);
     m_restartButton->setStyleSheet(QStringLiteral(
         "QPushButton {"
@@ -62,8 +67,61 @@ void GameControlPanel::setupUI() {
 
     buttonLayout->addWidget(m_settingsButton);
     buttonLayout->addWidget(m_restartButton);
-    layout->addWidget(titleLabel);
+    layout->addWidget(m_titleLabel);
     layout->addLayout(buttonLayout);
+    refreshTexts();
+}
+
+void GameControlPanel::setLanguage(UiLanguage language) {
+    if (m_language == language) return;
+    m_language = language;
+    refreshTexts();
+}
+
+void GameControlPanel::openSettingsDialog() {
+    QDialog dialog(this);
+    dialog.setWindowTitle(m_language == UiLanguage::English
+        ? QStringLiteral("Settings")
+        : QStringLiteral("设置"));
+
+    auto* layout = new QFormLayout(&dialog);
+    auto* languageCombo = new QComboBox(&dialog);
+    languageCombo->addItem(QStringLiteral("中文"), static_cast<int>(UiLanguage::Chinese));
+    languageCombo->addItem(QStringLiteral("English"), static_cast<int>(UiLanguage::English));
+    languageCombo->setCurrentIndex(m_language == UiLanguage::English ? 1 : 0);
+
+    layout->addRow(m_language == UiLanguage::English
+        ? QStringLiteral("Language:")
+        : QStringLiteral("语言:"), languageCombo);
+
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    buttons->button(QDialogButtonBox::Ok)->setText(m_language == UiLanguage::English
+        ? QStringLiteral("OK")
+        : QStringLiteral("确定"));
+    buttons->button(QDialogButtonBox::Cancel)->setText(m_language == UiLanguage::English
+        ? QStringLiteral("Cancel")
+        : QStringLiteral("取消"));
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    layout->addWidget(buttons);
+
+    if (dialog.exec() != QDialog::Accepted) return;
+
+    const UiLanguage selectedLanguage = static_cast<UiLanguage>(languageCombo->currentData().toInt());
+    if (selectedLanguage == m_language) return;
+
+    setLanguage(selectedLanguage);
+    emit languageChanged(selectedLanguage);
+}
+
+void GameControlPanel::refreshTexts() {
+    const bool english = m_language == UiLanguage::English;
+    m_titleLabel->setText(english ? QStringLiteral("Game Controls") : QStringLiteral("游戏控制"));
+    m_settingsButton->setText(english ? QStringLiteral("Settings") : QStringLiteral("设置"));
+    m_settingsButton->setToolTip(english
+        ? QStringLiteral("Open settings")
+        : QStringLiteral("打开设置"));
+    m_restartButton->setText(english ? QStringLiteral("Restart") : QStringLiteral("重启游戏"));
 }
 
 } // namespace Snooker2D

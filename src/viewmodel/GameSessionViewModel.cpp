@@ -84,7 +84,8 @@ void GameSessionViewModel::restart() {
     m_simulationTimer->stop();
     m_cueAngle = 0.0;
     m_cuePower = 50.0;
-    m_foulMessage.clear();
+    m_foulType = FoulType::None;
+    m_foulPenaltyPoints = 0;
     m_foulingPlayer = 0;
     m_gameState->startNewGame();
 }
@@ -101,7 +102,8 @@ void GameSessionViewModel::onModelTurnChanged() {
 
 void GameSessionViewModel::onModelSimulationStarted() {
     m_simulationTimer->start();
-    m_foulMessage.clear();
+    m_foulType = FoulType::None;
+    m_foulPenaltyPoints = 0;
     m_foulingPlayer = 0;
     pushAllStates();
 }
@@ -121,8 +123,8 @@ void GameSessionViewModel::onModelSimulationFinished() {
 }
 
 void GameSessionViewModel::onModelFoulOccurred(const FoulResult& result) {
-    // foulMessage 只存原始描述，犯规者编号由 View 层映射为中文名
-    m_foulMessage = result.description;
+    m_foulType = result.type;
+    m_foulPenaltyPoints = result.penaltyPoints;
     if (m_gameState && m_gameState->currentPlayer()) {
         m_foulingPlayer = (m_gameState->currentPlayer() == m_gameState->player1()) ? 1 : 2;
     }
@@ -214,7 +216,8 @@ void GameSessionViewModel::pushScoreState() {
         state.player1Break = m_gameState->player1()->currentBreak();
         state.player2Break = m_gameState->player2()->currentBreak();
         state.foulingPlayer = m_foulingPlayer;
-        state.foulMessage = m_foulMessage;
+        state.foulType = static_cast<int>(m_foulType);
+        state.foulPenaltyPoints = m_foulPenaltyPoints;
         state.statusMessage = m_statusMessage;
     }
     emit scoreStateReady(state);
@@ -226,10 +229,7 @@ void GameSessionViewModel::pushGameInfoState() {
         const Player* cp = m_gameState->currentPlayer();
         state.currentPlayer = (cp == m_gameState->player1()) ? 1 : 2;
         state.phaseKind = static_cast<int>(m_gameState->currentPhase());
-        state.phaseText = phaseTextFromEnum(m_gameState->currentPhase());
-        if (m_gameState->isSimulationRunning()) {
-            state.phaseText += QStringLiteral(" (模拟中...)");
-        }
+        state.isSimulating = m_gameState->isSimulationRunning();
         state.showWhiteBallPlacementHint = m_gameState->isWhiteBallPlacing();
     }
     emit gameInfoStateReady(state);
@@ -240,18 +240,6 @@ void GameSessionViewModel::pushAllStates() {
     pushCueState();
     pushScoreState();
     pushGameInfoState();
-}
-
-QString GameSessionViewModel::phaseTextFromEnum(GamePhase phase) const {
-    switch (phase) {
-        case GamePhase::NotStarted: return QStringLiteral("未开始");
-        case GamePhase::RedBall:    return QStringLiteral("请击红球");
-        case GamePhase::ColorBall:  return QStringLiteral("请击彩球");
-        case GamePhase::FreeBall:   return QStringLiteral("自由球");
-        case GamePhase::Foul:       return QStringLiteral("犯规");
-        case GamePhase::GameOver:   return QStringLiteral("比赛结束");
-    }
-    return QString();
 }
 
 } // namespace Snooker2D

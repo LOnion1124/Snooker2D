@@ -15,7 +15,6 @@ struct FoulResult {
     bool isFoul = false;
     FoulType type = FoulType::None;
     int penaltyPoints = 0;
-    QString description;
 };
 
 class Rules : public QObject {

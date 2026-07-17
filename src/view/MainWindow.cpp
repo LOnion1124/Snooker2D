@@ -40,9 +40,29 @@ void MainWindow::setupUI() {
     rightLayout->addStretch();
     rightLayout->addWidget(m_gameControlPanel);
 
+    connect(m_gameControlPanel, &GameControlPanel::languageChanged,
+            this, &MainWindow::setLanguage);
+
     mainLayout->addLayout(leftLayout, 3);
     mainLayout->addLayout(rightLayout, 1);
     setCentralWidget(centralWidget);
+    setLanguage(m_language);
+}
+
+void MainWindow::setLanguage(UiLanguage language) {
+    m_language = language;
+    if (m_cueControl) {
+        m_cueControl->setLanguage(language);
+    }
+    if (m_scoreBoard) {
+        m_scoreBoard->setLanguage(language);
+    }
+    if (m_gameInfoPanel) {
+        m_gameInfoPanel->setLanguage(language);
+    }
+    if (m_gameControlPanel) {
+        m_gameControlPanel->setLanguage(language);
+    }
 }
 
 } // namespace Snooker2D
