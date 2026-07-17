@@ -54,6 +54,10 @@ Vector2D closestPointOnSegment(const Vector2D& p,
     return a + ab * t;
 }
 
+Vector2D tangent(const Vector2D& v) {
+    return Vector2D(-v.y, v.x);
+}
+
 } // namespace MathUtils
 
 // Vector2D 成员函数

@@ -17,8 +17,10 @@ struct BallViewState {
 // 球桌整体展示状态（供 GameView 绘制）
 struct TableViewState {
     QVector<BallViewState> balls;
-    double cueAngle   = 0.0;
-    double cuePower   = 50.0;
+    double cueAngle     = 0.0;
+    double cuePower     = 50.0;
+    double cueEnglishX  = 0.0;
+    double cueEnglishY  = 0.0;
     bool   centeredCoordinates = false;
     bool   canAim     = false;
     bool   canShoot   = false;

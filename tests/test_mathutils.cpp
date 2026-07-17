@@ -90,6 +90,16 @@ void testCircleOverlap() {
           "circleOverlap-相切");
 }
 
+void testTangent() {
+    // 基本方向：逆时针 90°
+    CHECK_VEC_NEAR(MathUtils::tangent(Vector2D(1, 0)), Vector2D(0, 1), "tangent-右转上");
+    CHECK_VEC_NEAR(MathUtils::tangent(Vector2D(0, 1)), Vector2D(-1, 0), "tangent-上转左");
+    CHECK_VEC_NEAR(MathUtils::tangent(Vector2D(-1, 0)), Vector2D(0, -1), "tangent-左转下");
+    CHECK_VEC_NEAR(MathUtils::tangent(Vector2D(0, -1)), Vector2D(1, 0), "tangent-下转右");
+    // 非单位向量
+    CHECK_VEC_NEAR(MathUtils::tangent(Vector2D(3, 4)), Vector2D(-4, 3), "tangent-非单位");
+}
+
 void testClosestPointOnSegment() {
     // 点在线段投影范围内
     CHECK_VEC_NEAR(MathUtils::closestPointOnSegment(Vector2D(0, 0),
@@ -238,6 +248,9 @@ int main() {
 
     std::cout << "[closestPointOnSegment]" << std::endl;
     testClosestPointOnSegment();
+
+    std::cout << "[tangent]" << std::endl;
+    testTangent();
 
     std::cout << std::endl << "=== Vector2D 运算符 ===" << std::endl << std::endl;
 

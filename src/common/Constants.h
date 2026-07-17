@@ -36,4 +36,11 @@ constexpr double MIN_VELOCITY            = 0.05;
 constexpr int    MAX_POWER = 100;
 constexpr double MAX_SPEED = 15.0;
 
+// 加塞物理
+constexpr double ENGLISH_TO_SPIN            = 50.0;  // english 到角速度转换
+constexpr double BALL_BALL_TANGENT_FRICTION = 0.15;  // 球-球碰撞切线摩擦系数
+constexpr double CUSHION_TANGENT_FRICTION   = 0.25;  // 球-库边碰撞切线摩擦系数
+constexpr double SPIN_DECAY                 = 0.98;  // 自旋每帧衰减因子
+constexpr double ROLLING_COUPLING           = 0.02;  // 滚动耦合强度
+
 } // namespace Snooker2D

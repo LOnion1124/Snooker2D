@@ -24,5 +24,8 @@ Vector2D closestPointOnSegment(const Vector2D& p,
                                 const Vector2D& a,
                                 const Vector2D& b);
 
+// 向量逆时针旋转 90°（用于加塞物理中从法线求切线方向）
+Vector2D tangent(const Vector2D& v);
+
 } // namespace MathUtils
 } // namespace Snooker2D

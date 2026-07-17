@@ -50,6 +50,8 @@ int App::run(int argc, char* argv[])
             &sessionViewModel, &GameSessionViewModel::placeWhiteBall);
     QObject::connect(gameControlPanel, &GameControlPanel::restartRequested,
             &sessionViewModel, &GameSessionViewModel::restart);
+    QObject::connect(cueControl, &CueControl::englishChanged,
+            &sessionViewModel, &GameSessionViewModel::setEnglish);
 
     // 启动
 
