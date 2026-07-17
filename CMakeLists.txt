@@ -5,6 +5,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
+# MSVC 兼容：禁止 windows.h 定义 min/max 宏（会破坏 std::clamp）
+add_compile_definitions(NOMINMAX)
+
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
 # Common 层（纯 C++，不依赖 Qt）
