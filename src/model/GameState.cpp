@@ -115,12 +115,11 @@ void GameState::performShot(double angle, double power,
     double speed = (power / 100.0) * MAX_SPEED;
     whiteBall->setVelocity(Vector2D(std::cos(rad) * speed, -std::sin(rad) * speed));
 
-    // 加塞：english 转换为白球初始角速度
-    // englishY: 上塞为正（Follow），下塞为负（Draw）
-    // englishX: 侧塞影响库边反弹，通过碰撞阶段的切线摩擦体现
-    (void)englishX;
-    double spin = englishY * ENGLISH_TO_SPIN;
-    whiteBall->setAngularVelocity(spin);
+    // 加塞：按击球力度转换为两类自旋，避免 0 力度时只原地空转。
+    const double spinScale = power <= 0.0 ? 0.0 : power / 100.0;
+    const double rollSpin = englishY * ENGLISH_TO_SPIN * spinScale;
+    const double sideSpin = englishX * ENGLISH_TO_SPIN * spinScale;
+    whiteBall->setSpin(rollSpin, sideSpin);
 
     // 快照击球前各球落袋状态
     m_preShotPocketed.resize(m_balls.size());

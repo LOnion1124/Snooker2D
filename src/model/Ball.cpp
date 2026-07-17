@@ -35,12 +35,22 @@ void Ball::setAngularVelocity(double w) {
     m_angularVelocity = w;
 }
 
+void Ball::setSideSpin(double w) {
+    m_sideSpin = w;
+}
+
+void Ball::setSpin(double rollSpin, double sideSpin) {
+    m_angularVelocity = rollSpin;
+    m_sideSpin = sideSpin;
+}
+
 void Ball::setPocketed(bool isPocketed) {
     m_pocketed = isPocketed;
     if (isPocketed) {
         m_onTable = false;
         m_velocity = Vector2D(0.0, 0.0);
         m_angularVelocity = 0.0;
+        m_sideSpin = 0.0;
         emit pocketed();
     }
 }
@@ -54,6 +64,7 @@ void Ball::resetPosition(const Vector2D& initialPos) {
     m_initialPosition = initialPos;
     m_velocity = Vector2D(0.0, 0.0);
     m_angularVelocity = 0.0;
+    m_sideSpin = 0.0;
     m_pocketed = false;
     m_onTable = true;
     emit ballReset();
@@ -63,6 +74,7 @@ void Ball::respot() {
     m_position = m_initialPosition;
     m_velocity = Vector2D(0.0, 0.0);
     m_angularVelocity = 0.0;
+    m_sideSpin = 0.0;
     m_pocketed = false;
     m_onTable = true;
     emit ballReset();
