@@ -1,6 +1,6 @@
 # 添加功能指南
 
-本文档说明如何在当前 MVVM 架构中添加新功能，面向后续接手开发的 agent 或开发者。
+本文档说明如何在当前 MVVM 架构中添加新功能，面向后续接手开发的开发者。
 
 ## 架构速览
 
@@ -301,7 +301,6 @@ qRegisterMetaType<Snooker2D::NewViewState>("Snooker2D::NewViewState");
 - 文件末尾留一个空行
 - 命名空间：`Snooker2D`
 - 成员变量前缀 `m_`，如 `m_gameState`
-- **不要暴露 agent/AI 痕迹**：不加机器人风格的 commit message，不用过于工整的格式化
 
 ---
 
