@@ -9,7 +9,7 @@
 namespace Snooker2D {
 namespace Test {
 
-// --- 向量运算 ---
+// 向量运算 ---
 
 void testDot() {
     CHECK_NEAR(MathUtils::dot(Vector2D(1, 0), Vector2D(0, 1)), 0.0, "dot-正交");
@@ -52,7 +52,7 @@ void testReflect() {
     CHECK_VEC_NEAR(r, Vector2D(1, 0), "reflect-正撞墙壁");
 }
 
-// --- 几何 ---
+// 几何 ---
 
 void testDistance() {
     CHECK_NEAR(MathUtils::distance(Vector2D(0, 0), Vector2D(3, 4)), 5.0, "distance-345");
@@ -96,7 +96,7 @@ void testClosestPointOnSegment() {
                    Vector2D(3, 3), "closest-端点后");
 }
 
-// --- Vector2D 运算符 ---
+// Vector2D 运算符 ---
 
 void testVectorAdd() {
     Vector2D r = Vector2D(1, 2) + Vector2D(3, 4);
@@ -157,7 +157,7 @@ void testVectorNormalized() {
     CHECK_NEAR(Vector2D(5, 0).normalized().length(), 1.0, "Vec::normalized-单位");
 }
 
-// --- 类型辅助 ---
+// 类型辅助 ---
 
 void testBallValue() {
     CHECK(ballValue(BallType::Red) == 1, "ballValue-Red");
@@ -182,7 +182,7 @@ void testOppositePlayer() {
     CHECK(oppositePlayer(PlayerId::Player2) == PlayerId::Player1, "opposite-P2");
 }
 
-// --- 常量 ---
+// 常量 ---
 
 void testConstants() {
     CHECK(TABLE_WIDTH == 800.0, "TABLE_WIDTH");

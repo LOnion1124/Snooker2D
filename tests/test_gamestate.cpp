@@ -10,7 +10,7 @@
 namespace Snooker2D {
 namespace Test {
 
-// ---- 开局和白球放置 ----
+// 开局和白球放置
 
 void testOpeningRequiresWhiteBallPlacement() {
     GameState state;
@@ -30,7 +30,7 @@ void testOpeningPlacementKeepsRedBallPhase() {
     CHECK(state.currentPhase() == GamePhase::RedBall, "opening-placement-keeps-red-ball-phase");
 }
 
-// ---- 构造函数 ----
+// 构造函数 ----
 
 void testConstructor() {
     GameState state;
@@ -39,7 +39,7 @@ void testConstructor() {
     CHECK(!state.isSimulationRunning(), "constructor-not-simulating");
 }
 
-// ---- 白球放置验证 ----
+// 白球放置验证 ----
 
 void testIsValidPlacementInsideD() {
     GameState state;
@@ -65,7 +65,7 @@ void testIsValidPlacementTooFarRight() {
           "invalid-placement-beyond-baulk-line");
 }
 
-// ---- performShot 门控 ----
+// performShot 门控 ----
 
 void testPerformShotRejectedWhenGameOver() {
     GameState state;
@@ -86,7 +86,7 @@ void testPerformShotRejectedWhenPlacing() {
     CHECK(!state.isSimulationRunning(), "performShot-rejected-when-placing");
 }
 
-// ---- 玩家访问 ----
+// 玩家访问 ----
 
 void testPlayerAccess() {
     GameState state;
@@ -97,7 +97,7 @@ void testPlayerAccess() {
     CHECK(state.currentPlayer() == state.player1(), "current-player-is-player1");
 }
 
-// ---- 球访问 ----
+// 球访问 ----
 
 void testBallsAccess() {
     GameState state;
@@ -107,7 +107,7 @@ void testBallsAccess() {
     CHECK(!state.balls().empty(), "balls-not-empty");
 }
 
-// ---- 桌访问 ----
+// 桌访问 ----
 
 void testTableAccess() {
     GameState state;
@@ -117,7 +117,7 @@ void testTableAccess() {
     CHECK(state.table().height() > 0.0, "table-height-positive");
 }
 
-// ---- 犯规确认 ----
+// 犯规确认 ----
 
 void testConfirmFoul() {
     GameState state;
