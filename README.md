@@ -28,9 +28,16 @@ cmake --build build
 ### 运行测试
 
 ```bash
-./build/test_mathutils.exe    # Common 层单元测试
-./build/test_physics.exe      # 物理引擎测试
-./build/test_gamestate.exe    # 游戏状态机测试
+./build/test_mathutils.exe            # Common 层单元测试
+./build/test_physics.exe              # 物理引擎测试
+./build/test_gamestate.exe            # 游戏状态机测试
+./build/test_ball.exe                 # 球模型测试
+./build/test_player.exe               # 玩家计分测试
+./build/test_rules.exe                # 犯规判罚测试
+./build/test_viewmodel.exe            # ViewModel 信号槽测试
+./build/test_englishcontrolpanel.exe  # 加塞面板测试
+./build/test_gamecontrolpanel.exe     # 控制面板测试
+./build/test_gameview.exe             # 球桌视图测试
 ```
 
 ### 架构检查
@@ -106,9 +113,17 @@ Snooker2D/
 │       ├── App.h/.cpp
 │       └── main.cpp
 ├── tests/
+│   ├── test_utils.h
 │   ├── test_mathutils.cpp
 │   ├── test_physics.cpp
 │   ├── test_gamestate.cpp
+│   ├── test_ball.cpp
+│   ├── test_player.cpp
+│   ├── test_rules.cpp
+│   ├── test_viewmodel.cpp
+│   ├── test_englishcontrolpanel.cpp
+│   ├── test_gamecontrolpanel.cpp
+│   ├── test_gameview.cpp
 │   └── architecture/
 │       └── check_mvvm_boundaries.ps1
 ├── docs/
@@ -126,7 +141,7 @@ Snooker2D/
 
 ## CI/CD
 
-push 到 main 分支自动触发 GitHub Actions，包含：编译 → 跑 86 条测试 → 架构护栏检查。
+push 到 main 分支自动触发 GitHub Actions，包含：编译 → 跑 221 条测试 → 架构护栏检查。
 
 [![Build and Test](https://github.com/LOnion1124/Snooker2D/actions/workflows/ci.yml/badge.svg)](https://github.com/LOnion1124/Snooker2D/actions/workflows/ci.yml)
 
@@ -140,7 +155,9 @@ push 到 main 分支自动触发 GitHub Actions，包含：编译 → 跑 86 条
 - 加塞系统（上/下/左/右塞，9 方向）
 - 犯规判罚（白球落袋、空杆、先击错球、无球碰库、彩球落袋）
 - 计分板、游戏信息面板、中英文切换
-- 86 条单元测试、架构护栏自动检查
+- 库边预瞄辅助线
+- 221 条测试、架构护栏自动检查
+- GitHub Actions CI/CD 自动编译+测试
 
 ## 团队
 
@@ -148,7 +165,7 @@ push 到 main 分支自动触发 GitHub Actions，包含：编译 → 跑 86 条
 |------|------|------|
 | 开发者 A | 鲁亦智 | View 层 |
 | 开发者 B | 何广一 | Model + ViewModel 层 |
-| 开发者 C | 井淳 | Common + App 层、构建配置、CI/CD |
+| 开发者 C | 井淳 | Common + App 层、构建配置、测试框架、CI/CD |
 
 ## 开发文档
 
