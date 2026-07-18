@@ -1,5 +1,6 @@
 #include "GameControlPanel.h"
 
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -94,6 +95,13 @@ void GameControlPanel::openSettingsDialog() {
         ? QStringLiteral("Language:")
         : QStringLiteral("语言:"), languageCombo);
 
+    auto* aimingGuideCheckBox = new QCheckBox(&dialog);
+    aimingGuideCheckBox->setChecked(m_aimingGuideEnabled);
+    aimingGuideCheckBox->setText(m_language == UiLanguage::English
+        ? QStringLiteral("Show aiming guide")
+        : QStringLiteral("显示辅助瞄准线"));
+    layout->addRow(QString(), aimingGuideCheckBox);
+
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     buttons->button(QDialogButtonBox::Ok)->setText(m_language == UiLanguage::English
         ? QStringLiteral("OK")
@@ -108,10 +116,17 @@ void GameControlPanel::openSettingsDialog() {
     if (dialog.exec() != QDialog::Accepted) return;
 
     const UiLanguage selectedLanguage = static_cast<UiLanguage>(languageCombo->currentData().toInt());
-    if (selectedLanguage == m_language) return;
+    const bool selectedAimingGuideEnabled = aimingGuideCheckBox->isChecked();
 
-    setLanguage(selectedLanguage);
-    emit languageChanged(selectedLanguage);
+    if (selectedAimingGuideEnabled != m_aimingGuideEnabled) {
+        m_aimingGuideEnabled = selectedAimingGuideEnabled;
+        emit aimingGuideVisibilityChanged(selectedAimingGuideEnabled);
+    }
+
+    if (selectedLanguage != m_language) {
+        setLanguage(selectedLanguage);
+        emit languageChanged(selectedLanguage);
+    }
 }
 
 void GameControlPanel::refreshTexts() {

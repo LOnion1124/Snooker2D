@@ -18,6 +18,7 @@ public:
 signals:
     void restartRequested();
     void languageChanged(UiLanguage language);
+    void aimingGuideVisibilityChanged(bool enabled);
 
 public slots:
     void setLanguage(UiLanguage language);
@@ -31,6 +32,7 @@ private:
     QPushButton* m_settingsButton = nullptr;
     QPushButton* m_restartButton = nullptr;
     UiLanguage m_language = UiLanguage::Chinese;
+    bool m_aimingGuideEnabled = true;
 };
 
 } // namespace Snooker2D

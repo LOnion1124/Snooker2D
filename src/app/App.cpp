@@ -56,6 +56,8 @@ int App::run(int argc, char* argv[])
             &sessionViewModel, &GameSessionViewModel::restart);
     QObject::connect(englishControlPanel, &EnglishControlPanel::englishChanged,
             &sessionViewModel, &GameSessionViewModel::setEnglish);
+    QObject::connect(gameControlPanel, &GameControlPanel::aimingGuideVisibilityChanged,
+            gameView, &GameView::setAimingGuideEnabled);
 
     // 启动
 

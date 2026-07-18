@@ -14,6 +14,27 @@
 
 namespace Snooker2D {
 
+namespace {
+
+constexpr double AIMING_GUIDE_LENGTH = 200.0;
+constexpr double COLLISION_GUIDE_LENGTH = 160.0;
+
+double pointLength(const QPointF& point) {
+    return std::hypot(point.x(), point.y());
+}
+
+double dotProduct(const QPointF& a, const QPointF& b) {
+    return a.x() * b.x() + a.y() * b.y();
+}
+
+QPointF normalizedPoint(const QPointF& point) {
+    const double length = pointLength(point);
+    if (length <= 0.0001) return QPointF();
+    return QPointF(point.x() / length, point.y() / length);
+}
+
+} // namespace
+
 GameView::GameView(QWidget* parent)
     : QWidget(parent)
 {
@@ -54,6 +75,12 @@ void GameView::cancelShotAnimation() {
     m_isShotAnimating = false;
     m_hideAimingTools = false;
     m_shotAnimationGap = cueGap();
+    update();
+}
+
+void GameView::setAimingGuideEnabled(bool enabled) {
+    if (m_aimingGuideEnabled == enabled) return;
+    m_aimingGuideEnabled = enabled;
     update();
 }
 
@@ -236,17 +263,53 @@ void GameView::drawBalls(QPainter& painter) {
 }
 
 void GameView::drawAimingGuide(QPainter& painter) {
-    if (!aimingToolsVisible()) return;
+    if (!m_aimingGuideEnabled || !aimingToolsVisible()) return;
     QPointF startPx;
     if (!cueBallPixelPosition(&startPx)) return;
+    if (m_tableRect.isEmpty()) return;
 
     const double rad = m_cachedCueAngle * 3.14159265358979323846 / 180.0;
     const QPointF direction(std::cos(rad), -std::sin(rad));
-    const QPointF endPx = startPx + direction * 200.0;
+    const double scaleX = m_tableRect.width() / TABLE_WIDTH;
+    const double ballRadius = BALL_RADIUS * scaleX;
+    const AimingCollision collision =
+        findAimingCollision(startPx, direction, AIMING_GUIDE_LENGTH, ballRadius);
+    const CushionCollision cushion =
+        findCushionCollision(startPx, direction, AIMING_GUIDE_LENGTH, ballRadius);
+    const double ballCollisionDistance = collision.hasHit
+        ? pointLength(collision.cueCenter - startPx)
+        : AIMING_GUIDE_LENGTH + 1.0;
+    const bool drawBallCollision = collision.hasHit
+        && (!cushion.hasHit || ballCollisionDistance <= cushion.distance);
+    const bool drawCushionCollision =
+        cushion.hasHit && (!drawBallCollision
+            || cushion.distance < ballCollisionDistance);
 
     painter.save();
-    painter.setPen(QPen(QColor(255, 255, 255, 100), 2, Qt::DashLine));
-    painter.drawLine(startPx, endPx);
+    QPen guidePen(QColor(255, 255, 255, 120), 2, Qt::DashLine);
+    guidePen.setCapStyle(Qt::RoundCap);
+    painter.setPen(guidePen);
+
+    if (drawBallCollision) {
+        painter.drawLine(startPx, collision.cueCenter);
+        painter.drawEllipse(collision.cueCenter, ballRadius, ballRadius);
+
+        drawCushionAwareGuideLine(painter, collision.objectCenter,
+                                  collision.objectDirection, COLLISION_GUIDE_LENGTH,
+                                  ballRadius);
+
+        if (collision.hasCueRebound) {
+            drawCushionAwareGuideLine(painter, collision.cueCenter,
+                                      collision.cueReboundDirection,
+                                      COLLISION_GUIDE_LENGTH, ballRadius);
+        }
+    } else if (drawCushionCollision) {
+        drawCushionAwareGuideLine(painter, startPx, direction,
+                                  AIMING_GUIDE_LENGTH, ballRadius);
+    } else {
+        painter.drawLine(startPx, startPx + direction * AIMING_GUIDE_LENGTH);
+    }
+
     painter.restore();
 }
 
@@ -282,6 +345,138 @@ void GameView::drawCue(QPainter& painter) {
     painter.setBrush(QColor(235, 218, 166));
     painter.drawRect(tipRect);
     painter.restore();
+}
+
+void GameView::drawCushionAwareGuideLine(QPainter& painter, const QPointF& startPx,
+                                         const QPointF& direction, double guideLength,
+                                         double ballRadius) const {
+    const CushionCollision cushion =
+        findCushionCollision(startPx, direction, guideLength, ballRadius);
+    const QPointF endPx = cushion.hasHit
+        ? cushion.cueCenter
+        : startPx + direction * guideLength;
+    painter.drawLine(startPx, endPx);
+
+    if (!cushion.hasHit) return;
+
+    const double reboundLength = guideLength - cushion.distance;
+    if (reboundLength <= 0.0) return;
+
+    const CushionCollision nextCushion =
+        findCushionCollision(cushion.cueCenter, cushion.reboundDirection,
+                             reboundLength, ballRadius);
+    const QPointF reboundEnd = nextCushion.hasHit
+        ? nextCushion.cueCenter
+        : cushion.cueCenter + cushion.reboundDirection * reboundLength;
+    painter.drawLine(cushion.cueCenter, reboundEnd);
+}
+
+GameView::AimingCollision GameView::findAimingCollision(
+        const QPointF& startPx,
+        const QPointF& direction,
+        double guideLength,
+        double ballRadius) const {
+    AimingCollision result;
+    const double contactDistance = ballRadius * 2.0;
+    const double contactDistanceSquared = contactDistance * contactDistance;
+    double nearestDistance = guideLength;
+
+    for (const BallViewState& ball : m_cachedBalls) {
+        if (!ball.onTable || ball.type == 0) continue;
+
+        const QPointF objectCenter = gameToPixel(ball.x, ball.y);
+        const QPointF offset = objectCenter - startPx;
+        const double projection = dotProduct(offset, direction);
+        if (projection <= 0.0) continue;
+
+        const double offsetDistanceSquared = dotProduct(offset, offset);
+        const double perpendicularSquared = offsetDistanceSquared - projection * projection;
+        if (perpendicularSquared > contactDistanceSquared) continue;
+
+        const double backDistance =
+            std::sqrt(qMax(0.0, contactDistanceSquared - perpendicularSquared));
+        const double hitDistance = projection - backDistance;
+        if (hitDistance < 0.0 || hitDistance > nearestDistance) continue;
+
+        const QPointF cueCenter = startPx + direction * hitDistance;
+        const QPointF objectDirection = normalizedPoint(objectCenter - cueCenter);
+        if (pointLength(objectDirection) <= 0.0001) continue;
+
+        const QPointF cueTangent =
+            direction - objectDirection * dotProduct(direction, objectDirection);
+        const QPointF cueReboundDirection = normalizedPoint(cueTangent);
+
+        nearestDistance = hitDistance;
+        result.hasHit = true;
+        result.hasCueRebound = pointLength(cueReboundDirection) > 0.0001;
+        result.cueCenter = cueCenter;
+        result.objectCenter = objectCenter;
+        result.objectDirection = objectDirection;
+        result.cueReboundDirection = cueReboundDirection;
+    }
+
+    return result;
+}
+
+GameView::CushionCollision GameView::findCushionCollision(
+        const QPointF& startPx,
+        const QPointF& direction,
+        double guideLength,
+        double ballRadius) const {
+    CushionCollision result;
+    const QRectF bounds = m_tableRect.adjusted(ballRadius, ballRadius, -ballRadius, -ballRadius);
+    if (bounds.isEmpty()) return result;
+
+    constexpr double EPS = 0.0001;
+    double nearestDistance = guideLength + EPS;
+    bool hitVertical = false;
+    bool hitHorizontal = false;
+
+    const auto considerHit = [&](double distance, bool vertical) {
+        if (distance <= EPS || distance > guideLength + EPS) return;
+        const QPointF point = startPx + direction * distance;
+        if (point.x() < bounds.left() - EPS || point.x() > bounds.right() + EPS ||
+            point.y() < bounds.top() - EPS || point.y() > bounds.bottom() + EPS) {
+            return;
+        }
+
+        if (distance < nearestDistance - EPS) {
+            nearestDistance = distance;
+            hitVertical = vertical;
+            hitHorizontal = !vertical;
+        } else if (std::abs(distance - nearestDistance) <= EPS) {
+            hitVertical = hitVertical || vertical;
+            hitHorizontal = hitHorizontal || !vertical;
+        }
+    };
+
+    if (direction.x() > EPS) {
+        considerHit((bounds.right() - startPx.x()) / direction.x(), true);
+    } else if (direction.x() < -EPS) {
+        considerHit((bounds.left() - startPx.x()) / direction.x(), true);
+    }
+
+    if (direction.y() > EPS) {
+        considerHit((bounds.bottom() - startPx.y()) / direction.y(), false);
+    } else if (direction.y() < -EPS) {
+        considerHit((bounds.top() - startPx.y()) / direction.y(), false);
+    }
+
+    if (nearestDistance > guideLength) return result;
+
+    QPointF reboundDirection = direction;
+    if (hitVertical) reboundDirection.setX(-reboundDirection.x());
+    if (hitHorizontal) reboundDirection.setY(-reboundDirection.y());
+
+    QPointF cueCenter = startPx + direction * nearestDistance;
+    cueCenter.setX(qBound(bounds.left(), cueCenter.x(), bounds.right()));
+    cueCenter.setY(qBound(bounds.top(), cueCenter.y(), bounds.bottom()));
+
+    result.hasHit = true;
+    result.cueCenter = cueCenter;
+    result.reboundDirection = reboundDirection;
+    result.distance = nearestDistance;
+    return result;
 }
 
 QPointF GameView::gameToPixel(double gameX, double gameY) const {

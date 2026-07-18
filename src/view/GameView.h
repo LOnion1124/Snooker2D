@@ -24,6 +24,7 @@ public:
 public slots:
     void applyTableState(const TableViewState& state);
     void cancelShotAnimation();
+    void setAimingGuideEnabled(bool enabled);
 
 signals:
     void angleChanged(double angle);
@@ -39,12 +40,35 @@ protected:
     void wheelEvent(QWheelEvent* event) override;
 
 private:
+    struct AimingCollision {
+        bool hasHit = false;
+        bool hasCueRebound = false;
+        QPointF cueCenter;
+        QPointF objectCenter;
+        QPointF objectDirection;
+        QPointF cueReboundDirection;
+    };
+
+    struct CushionCollision {
+        bool hasHit = false;
+        QPointF cueCenter;
+        QPointF reboundDirection;
+        double distance = 0.0;
+    };
+
     void drawTable(QPainter& painter);
     void drawPockets(QPainter& painter);
     void drawWhiteBallPlacementGuide(QPainter& painter);
     void drawBalls(QPainter& painter);
     void drawAimingGuide(QPainter& painter);
     void drawCue(QPainter& painter);
+    void drawCushionAwareGuideLine(QPainter& painter, const QPointF& startPx,
+                                   const QPointF& direction, double guideLength,
+                                   double ballRadius) const;
+    AimingCollision findAimingCollision(const QPointF& startPx, const QPointF& direction,
+                                        double guideLength, double ballRadius) const;
+    CushionCollision findCushionCollision(const QPointF& startPx, const QPointF& direction,
+                                          double guideLength, double ballRadius) const;
     QPointF gameToPixel(double gameX, double gameY) const;
     QPointF pixelToGame(const QPointF& pixelPosition) const;
     QColor ballColor(int ballType) const;
@@ -67,6 +91,7 @@ private:
     bool m_cachedIsPlacingWhiteBall = false;
     bool m_cachedIsSimulating = false;
     bool m_centeredCoordinates = false;
+    bool m_aimingGuideEnabled = true;
 
     bool m_isShotAnimating = false;
     bool m_hideAimingTools = false;
