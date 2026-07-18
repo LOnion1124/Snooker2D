@@ -45,7 +45,7 @@ void GameSessionViewModel::start() {
     m_gameState->startNewGame();
 }
 
-// ---- View 命令 ----
+// View 命令 ----
 
 void GameSessionViewModel::setAngle(double angle) {
     while (angle < 0.0) angle += 360.0;
@@ -109,7 +109,7 @@ void GameSessionViewModel::restart() {
     m_gameState->startNewGame();
 }
 
-// ---- Model 信号回调 ----
+// Model 信号回调 ----
 
 void GameSessionViewModel::onModelPhaseChanged(GamePhase /*phase*/) {
     pushAllStates();
@@ -163,7 +163,7 @@ void GameSessionViewModel::onPlayerScoreChanged(int /*score*/) {
     pushScoreState();
 }
 
-// ---- 状态推送 ----
+// 状态推送 ----
 
 void GameSessionViewModel::pushTableState() {
     TableViewState state;

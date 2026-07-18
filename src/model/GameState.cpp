@@ -48,12 +48,12 @@ void GameState::initBalls() {
     const double hw = TABLE_WIDTH / 2.0;   // 400
     const double hh = TABLE_HEIGHT / 2.0;  // 200
 
-    // === 1. 白球 (D 区中央偏左) ===
+    // 白球（D 区中央偏左）
     auto white = std::make_unique<Ball>(BallType::White);
     white->resetPosition(Vector2D(-TABLE_WIDTH * 0.35, 0.0)); // (-280, 0)
     m_balls.push_back(std::move(white));
 
-    // === 2. 6 颗彩球（各自点位） ===
+    // 6 颗彩球（各自点位）
     // 黄 = 开球线右端, 绿 = 开球线左端, 棕 = 开球线中央
     // 蓝 = 台面中心, 粉 = 3/4 台长处, 黑 = 7/8 台长处
     auto yellow = std::make_unique<Ball>(BallType::Yellow);
@@ -80,7 +80,7 @@ void GameState::initBalls() {
     black->resetPosition(Vector2D(TABLE_WIDTH * 0.39, 0.0)); // (300, 0)
     m_balls.push_back(std::move(black));
 
-    // === 3. 15 颗红球（三角阵） ===
+    // 15 颗红球（三角阵）
     // 顶点紧贴粉球后方: apexX = 200 + 2*BALL_RADIUS
     // 行间距 = sqrt(3) * BALL_RADIUS（正六边形密排）
     const double apexX = TABLE_WIDTH * 0.25 + 2.0 * BALL_RADIUS;
@@ -185,7 +185,7 @@ Player* GameState::currentPlayer() const {
 void GameState::handlePostShot() {
     if (m_phase == GamePhase::GameOver) return;
 
-    // 1. 计算本次击球新落袋的非白球
+    // 计算本次击球新落袋的非白球
     int score = 0;
     bool anyBallPocketed = false;
     bool redPocketed = false;
@@ -212,7 +212,7 @@ void GameState::handlePostShot() {
         }
     }
 
-    // 2. 确定当前应击球种
+    // 确定当前应击球种
     BallType requiredType = BallType::Red;
     if (m_phase == GamePhase::ColorBall) {
         if (allRedsPocketed()) {
@@ -222,7 +222,7 @@ void GameState::handlePostShot() {
         // 红球还在时：交替阶段，"任意彩球" 合法，另做处理
     }
 
-    // 3. 构建 Ball* 列表供 Rules 使用
+    // 构建 Ball* 列表供 Rules 使用
     std::vector<Ball*> ballPtrs;
     ballPtrs.reserve(m_balls.size());
     for (auto& b : m_balls) ballPtrs.push_back(b.get());
@@ -234,7 +234,7 @@ void GameState::handlePostShot() {
         }
     }
 
-    // 4. 犯规检测
+    // 犯规检测
     bool isFoul = false;
     FoulResult foulResult;
 
@@ -295,7 +295,7 @@ void GameState::handlePostShot() {
         isFoul = true;
     }
 
-    // 5. 处理犯规
+    // 处理犯规
     if (isFoul) {
         PlayerId opponentId = oppositePlayer(m_currentPlayerId);
         Player* opponent = (opponentId == PlayerId::Player1) ? m_player1.get() : m_player2.get();
@@ -333,7 +333,7 @@ void GameState::handlePostShot() {
         return;
     }
 
-    // 6. 未犯规 — 正常计分
+    // 未犯规，正常计分
     if (score > 0) {
         currentPlayer()->addScore(score);
     }
@@ -350,7 +350,7 @@ void GameState::handlePostShot() {
         }
     }
 
-    // 7. 阶段转换
+    // 阶段转换
     if (allRedsPocketed()) {
         if (m_phase != GamePhase::ColorBall) {
             m_phase = GamePhase::ColorBall;
@@ -367,7 +367,7 @@ void GameState::handlePostShot() {
         emit phaseChanged(m_phase);
     }
 
-    // 8. 无进球 → 切换回合（犯规分支已 return，不会走到这里）
+    // 无进球 → 切换回合（犯规分支已 return，不会走到这里）
     if (score == 0) {
         switchTurn();
     }
